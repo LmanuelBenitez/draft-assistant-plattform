@@ -1,116 +1,120 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Formulario from './components/Formulario';
+import Grafico from './components/Grafico';
+import Tarjeta from './components/Tarjeta';
+import Historial from './components/Historial';
+import Layout from './components/Layout';
+import { usePrediccion } from './hooks/usePrediccion';
+import { useHistorialStore } from './store/historialStore';
+import { TEXTOS } from './constants';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function AppContent() {
+  const { prediccion, isLoading, error, realizarPrediccion, resetPrediccion } =
+    usePrediccion();
+  const { predicciones, addPrediccion, clearHistorial } = useHistorialStore();
+
+  const handlePrediccion = async (data: { local: string; visitante: string }) => {
+    try {
+      // Store the team names for later use
+      setEquiposActuales(data);
+      await realizarPrediccion(data);
+    } catch (err) {
+      // Error handled by usePrediccion hook
+    }
+  };
+
+  const [equiposActuales, setEquiposActuales] = React.useState<{ local: string; visitante: string } | null>(null);
+
+  const handleClearHistorial = () => {
+    clearHistorial();
+  };
+
+  const handleResetPrediccion = () => {
+    resetPrediccion();
+    setEquiposActuales(null);
+  };
+
+  // Cuando se recibe una nueva predicción, guardarla en el historial
+  React.useEffect(() => {
+    if (prediccion && equiposActuales) {
+      // Verificar si ya está guardada para evitar duplicados
+      const yaGuardada = predicciones.some((p) => {
+        const mismoEquipo =
+          p.equipos.local === equiposActuales.local &&
+          p.equipos.visitante === equiposActuales.visitante;
+        return mismoEquipo;
+      });
+
+      if (!yaGuardada) {
+        addPrediccion({
+          equipos: equiposActuales,
+          probabilidades: prediccion.probabilidades,
+          recomendacion: prediccion.recomendacion,
+        });
+      }
+    }
+  }, [prediccion, equiposActuales, addPrediccion, predicciones]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
+    <Layout>
+      {/* Formulario */}
+      <div className="mb-6">
+        <Formulario onSubmit={handlePrediccion} isLoading={isLoading} />
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-red-600 dark:text-red-400 text-center">
+            ❌ {TEXTOS.error}: {error.message}
           </p>
+          <button
+            onClick={handleResetPrediccion}
+            className="mt-2 w-full py-2 bg-red-100 dark:bg-red-800/30 hover:bg-red-200 dark:hover:bg-red-800/50 text-red-700 dark:text-red-300 rounded-lg transition-colors"
+          >
+            Reintentar
+          </button>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {/* Resultados de la predicción */}
+      {prediccion && equiposActuales && (
+        <div className="space-y-6 mb-8">
+          <Grafico probabilidades={prediccion.probabilidades} tipo="dona" />
+          <Tarjeta
+            prediccion={prediccion}
+            local={equiposActuales.local}
+            visitante={equiposActuales.visitante}
+          />
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {/* Historial */}
+      <Historial
+        predicciones={predicciones}
+        onClear={handleClearHistorial}
+      />
+    </Layout>
+  );
 }
 
-export default App
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
+  );
+}
+
+export default App;
