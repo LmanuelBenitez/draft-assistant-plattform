@@ -22,6 +22,8 @@ namespace backend.Models
         [MaxLength(50)]
         public string? Estadio { get; set; }
 
+        public string? Competicion { get; set; }
+
         public int? GolesLocal { get; set; }
 
         public int? GolesVisitante { get; set; }

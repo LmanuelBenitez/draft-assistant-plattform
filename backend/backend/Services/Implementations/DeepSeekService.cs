@@ -131,10 +131,11 @@ namespace backend.Services.Implementations
             prompt.AppendLine("3. Si los enfrentamientos suelen tener muchos goles (>2.5), mencionalo.");
             prompt.AppendLine("4. No uses frases genericas como 'sera un partido parejo' sin justificacion.");
             prompt.AppendLine("5. Basa tu analisis en los datos proporcionados.");
-            prompt.AppendLine("6. Responde EXCLUSIVAMENTE en el siguiente formato JSON:");
+            prompt.AppendLine("6. Igual no dejes afuera los factores blandos como la moral del equipo, alguna racha o algo que influya.");
+            prompt.AppendLine("7. Responde EXCLUSIVAMENTE en el siguiente formato JSON:");
             prompt.AppendLine(@"
             {
-              ""explicacion"": ""texto de maximo 4 lineas"",
+              ""explicacion"": ""texto de maximo 5 lineas"",
               ""factores_clave"": [""factor1"", ""factor2"", ""factor3""],
               ""alertas"": [""alerta1"", ""alerta2""],
               ""recomendacion"": ""Victoria de X|Empate|Victoria de Y""

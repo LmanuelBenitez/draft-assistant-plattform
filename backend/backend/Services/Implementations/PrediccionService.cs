@@ -127,6 +127,21 @@ namespace backend.Services.Implementations
                 _context.Predicciones.Add(prediccion);
                 await _context.SaveChangesAsync();
 
+                // 7.5. Crear y guardar el partido en BD (si no existe)
+                var partido = new Partido
+                {
+                    Local = request.Local,
+                    Visitante = request.Visitante,
+                    FechaHora = request.FechaHora ?? DateTime.UtcNow,
+                    Competicion = request.Competicion,
+                    Estadio = request.Estadio,
+                    GolesLocal = 0,
+                    GolesVisitante = 0
+                };
+
+                _context.Partidos.Add(partido);
+                await _context.SaveChangesAsync();
+
                 // 8. Obtener análisis de DeepSeek (con TODOS los datos)
                 try
                 {
