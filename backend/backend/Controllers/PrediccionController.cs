@@ -68,20 +68,6 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Obtiene todas las predicciones de un partido
-        /// </summary>
-        [HttpGet("partido/{partidoId}")]
-        [ProducesResponseType(typeof(IAsyncEnumerable<PrediccionResponseDto>), StatusCodes.Status200OK)]
-        public async IAsyncEnumerable<PrediccionResponseDto> ObtenerPrediccionesPorPartido(
-            int partidoId)
-        {
-            await foreach (var resultado in _prediccionService.ObtenerPrediccionesPorPartidoAsync(partidoId))
-            {
-                yield return resultado;
-            };
-        }
-
-        /// <summary>
         /// Actualiza los resultados de un partido y recalcula los puntajes
         /// </summary>
         [HttpPut("resultados/{partidoId}")]

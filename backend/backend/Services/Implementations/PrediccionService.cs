@@ -35,17 +35,49 @@ namespace backend.Services.Implementations
                 if (request.Local.Length < 2 || request.Visitante.Length < 2)
                     throw new ArgumentException("Los equipos deben tener al menos 2 caracteres");
 
-                // 2. Obtener estadísticas reales desde API-Football
-                var statsLocal = await _footballApi.GetEstadisticasEquipoAsync(request.Local);
-                var statsVisitante = await _footballApi.GetEstadisticasEquipoAsync(request.Visitante);
+                // 2. Obtener estadísticas desde API-Football
+                var statsLocal = await _footballApi.GetEstadisticasEquipoAsync(
+                    request.Local, request.LigaIdLocal, request.Temporada);
+                var statsVisitante = await _footballApi.GetEstadisticasEquipoAsync(
+                    request.Visitante, request.LigaIdVisitante, request.Temporada);
+                var historicoH2H = await _footballApi.GetPartidosHead2HeadAsync(
+                    request.Local, request.Visitante,
+                    request.LigaIdLocal, request.LigaIdVisitante,
+                    request.Temporada);
 
-                var promedioLocal = statsLocal.PromedioGolesFavor > 0 ? statsLocal.PromedioGolesFavor : 1.0;
-                var promedioVisitante = statsVisitante.PromedioGolesFavor > 0 ? statsVisitante.PromedioGolesFavor : 1.0;
+                // 3. Calcular promedios base
+                var promedioLocalBase = statsLocal.PromedioGolesFavor > 0 ? statsLocal.PromedioGolesFavor : 1.0;
+                var promedioVisitanteBase = statsVisitante.PromedioGolesFavor > 0 ? statsVisitante.PromedioGolesFavor : 1.0;
 
-                _logger.LogInformation("Promedios: {Local} = {PromLocal}, {Visitante} = {PromVisit}",
-                    request.Local, promedioLocal, request.Visitante, promedioVisitante);
+                // 4. Ajustar promedios con Head-to-Head (si hay datos suficientes)
+                var promedioLocal = promedioLocalBase;
+                var promedioVisitante = promedioVisitanteBase;
 
-                // 3. Calcular predicción con Poisson
+                if (historicoH2H != null && historicoH2H.Count >= 3)
+                {
+                    // Calcular promedios en enfrentamientos directos
+                    var golesLocalH2H = historicoH2H
+                        .Where(p => p.Local == request.Local)
+                        .Select(p => p.GolesLocal)
+                        .DefaultIfEmpty(0)
+                        .Average();
+
+                    var golesVisitanteH2H = historicoH2H
+                        .Where(p => p.Visitante == request.Visitante)
+                        .Select(p => p.GolesVisitante)
+                        .DefaultIfEmpty(0)
+                        .Average();
+
+                    // Si hay datos válidos, ajustar con peso 70% general / 30% H2H
+                    if (golesLocalH2H > 0) promedioLocal = (promedioLocalBase * 0.7) + (golesLocalH2H * 0.3);
+                    if (golesVisitanteH2H > 0) promedioVisitante = (promedioVisitanteBase * 0.7) + (golesVisitanteH2H * 0.3);
+
+                    _logger.LogInformation("Promedios ajustados con H2H: {Local} {PromLocal:F2} (base {BaseLocal:F2}), {Visitante} {PromVisit:F2} (base {BaseVisit:F2})",
+                        request.Local, promedioLocal, promedioLocalBase,
+                        request.Visitante, promedioVisitante, promedioVisitanteBase);
+                }
+
+                // 5. Calcular predicción con Poisson
                 var marcador = await _poissonService.PredecirMarcadorAsync(promedioLocal, promedioVisitante);
                 var probabilidades = await _poissonService.CalcularProbabilidadesPartidoAsync(promedioLocal, promedioVisitante);
                 var confianza = await _poissonService.CalcularConfianzaAsync(
@@ -54,59 +86,76 @@ namespace backend.Services.Implementations
                     marcador.GolesLocal,
                     marcador.GolesVisitante);
 
-                // 4. Buscar o crear partido en la base de datos
-                var partido = await _context.Partidos
-                    .FirstOrDefaultAsync(p =>
-                        p.Local == request.Local &&
-                        p.Visitante == request.Visitante &&
-                        p.FechaHora.Date == DateTime.UtcNow.Date)  // Para evitar duplicados el mismo día
-                    ?? new Partido
-                    {
-                        Local = request.Local,
-                        Visitante = request.Visitante,
-                        FechaHora = DateTime.UtcNow,
-                        Estado = "Pendiente"
-                    };
-
-                if (partido.Id == 0)
+                // 6. Ajustar confianza según historial H2H
+                if (historicoH2H != null && historicoH2H.Count >= 3)
                 {
-                    _context.Partidos.Add(partido);
-                    await _context.SaveChangesAsync();
+                    var victoriasLocal = historicoH2H.Count(p => p.GolesLocal > p.GolesVisitante);
+                    var victoriasVisitante = historicoH2H.Count(p => p.GolesVisitante > p.GolesLocal);
+                    var diferencia = Math.Abs(victoriasLocal - victoriasVisitante);
+
+                    // Si un equipo domina claramente el H2H, aumentar confianza
+                    if (diferencia >= 3)
+                    {
+                        var factor = 1.0 + (diferencia * 0.02);
+                        confianza = Math.Min(confianza * factor, 0.95);
+                    }
                 }
 
-                // 5. Crear y guardar la predicción
+                // 7. Crear y guardar la predicción (SIN partido en BD)
                 var prediccion = new Prediccion
                 {
-                    PartidoId = partido.Id,
+                    Local = request.Local,
+                    Visitante = request.Visitante,
+                    LigaIdLocal = int.Parse(request.LigaIdLocal),
+                    LigaIdVisitante = int.Parse(request.LigaIdVisitante),
+                    Temporada = request.Temporada,
+                    Competicion = request.Competicion,
+                    Estadio = request.Estadio,
+                    Bajas = request.Bajas,
+                    Contexto = request.Contexto,
                     GolesLocalPredichos = marcador.GolesLocal,
                     GolesVisitantePredichos = marcador.GolesVisitante,
                     ProbabilidadLocal = (decimal)probabilidades.Local,
                     ProbabilidadEmpate = (decimal)probabilidades.Empate,
                     ProbabilidadVisitante = (decimal)probabilidades.Visitante,
                     Confianza = (decimal)confianza,
+                    PromedioGolesLocal = (decimal)promedioLocal,
+                    PromedioGolesVisitante = (decimal)promedioVisitante,
                     FechaPrediccion = DateTime.UtcNow
                 };
 
                 _context.Predicciones.Add(prediccion);
                 await _context.SaveChangesAsync();
 
-                // 6. Obtener análisis de DeepSeek (en segundo plano)
+                // 8. Obtener análisis de DeepSeek (con TODOS los datos)
                 try
                 {
                     var deepSeekResponse = await _deepSeekService.ObtenerPrediccionFutbolAsync(
-                        request.Local,
-                        request.Visitante);
+                        equipoLocal: request.Local,
+                        equipoVisitante: request.Visitante,
+                        promedioGolesLocal: promedioLocal,
+                        promedioGolesVisitante: promedioVisitante,
+                        probLocal: probabilidades.Local,
+                        probEmpate: probabilidades.Empate,
+                        probVisitante: probabilidades.Visitante,
+                        competicion: request.Competicion,
+                        estadio: request.Estadio,
+                        bajas: request.Bajas,
+                        contexto: request.Contexto,
+                        historicoEnfrentamientos: historicoH2H
+                    );
 
-                    prediccion.Comentarios = deepSeekResponse;
+                    prediccion.AnalisisDeepSeek = deepSeekResponse;
                     await _context.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error al obtener predicción de DeepSeek");
+                    prediccion.AnalisisDeepSeek = "No se pudo obtener el análisis de DeepSeek";
                 }
 
-                // 7. Devolver respuesta
-                return await MapToResponseDto(prediccion);
+                // 9. Devolver respuesta
+                return MapToResponseDto(prediccion);
             }
             catch (Exception ex)
             {
@@ -118,61 +167,61 @@ namespace backend.Services.Implementations
         public async Task<PrediccionResponseDto> ObtenerPrediccionAsync(int id)
         {
             var prediccion = await _context.Predicciones
-                .Include(p => p.Partido)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (prediccion == null)
                 throw new ArgumentException($"Predicción con ID {id} no encontrada");
 
-            return await MapToResponseDto(prediccion);
+            return MapToResponseDto(prediccion);
         }
 
-        public async IAsyncEnumerable<PrediccionResponseDto> ObtenerPrediccionesPorPartidoAsync(int partidoId)
+        public async IAsyncEnumerable<PrediccionResponseDto> ObtenerPrediccionesPorEquipoAsync(string equipo)
         {
             await foreach (var p in _context.Predicciones
-                .Include(p => p.Partido)
-                .Where(p => p.PartidoId == partidoId)
+                .Where(p => p.Local == equipo || p.Visitante == equipo)
                 .OrderByDescending(p => p.FechaPrediccion)
                 .AsAsyncEnumerable())
             {
-                yield return await MapToResponseDto(p);
+                yield return MapToResponseDto(p);
             }
         }
 
         public async Task<bool> ValidarPrediccionAsync(PrediccionResponseDto prediccion)
         {
+            // Validar que los goles no sean negativos
             if (prediccion.GolesLocalPredichos < 0 || prediccion.GolesVisitantePredichos < 0)
                 return false;
 
+            // Validar que los goles estén dentro de un rango razonable
             if (prediccion.GolesLocalPredichos > 10 || prediccion.GolesVisitantePredichos > 10)
                 return false;
 
+            // Validar que la confianza esté en el rango 0-1
             if (prediccion.Confianza < 0 || prediccion.Confianza > 1)
                 return false;
 
-            var suma = (prediccion.ProbabilidadLocal ?? 0) +
-                      (prediccion.ProbabilidadEmpate ?? 0) +
-                      (prediccion.ProbabilidadVisitante ?? 0);
+            // Validar que las probabilidades sumen aproximadamente 1
+            var suma = prediccion.ProbabilidadLocal +
+                       prediccion.ProbabilidadEmpate +
+                       prediccion.ProbabilidadVisitante;
 
             return Math.Abs(suma - 1) < 0.01m;
         }
 
         public async Task<decimal> CalcularConfianzaAsync(PrediccionResponseDto prediccion)
         {
-            var confianzaBase = prediccion.Confianza ?? 0.5m;
+            // La confianza ya está calculada, pero podemos refinarla
+            var confianzaBase = prediccion.Confianza;
 
-            if (prediccion.ProbabilidadLocal.HasValue &&
-                prediccion.ProbabilidadVisitante.HasValue &&
-                prediccion.ProbabilidadEmpate.HasValue)
-            {
-                var maxProb = Math.Max(
-                    Math.Max(prediccion.ProbabilidadLocal.Value, prediccion.ProbabilidadVisitante.Value),
-                    prediccion.ProbabilidadEmpate.Value);
+            // Si hay probabilidades, ajustar la confianza
+            var maxProb = Math.Max(
+                Math.Max(prediccion.ProbabilidadLocal, prediccion.ProbabilidadVisitante),
+                prediccion.ProbabilidadEmpate);
 
-                var ajuste = (maxProb - 0.33m) * 1.5m;
-                confianzaBase = Math.Min(confianzaBase + ajuste, 0.95m);
-                confianzaBase = Math.Max(confianzaBase, 0.05m);
-            }
+            // Ajustar confianza basada en la probabilidad máxima
+            var ajuste = (maxProb - 0.33m) * 1.5m;
+            confianzaBase = Math.Min(confianzaBase + ajuste, 0.95m);
+            confianzaBase = Math.Max(confianzaBase, 0.05m);
 
             return await Task.FromResult(confianzaBase);
         }
@@ -204,71 +253,76 @@ namespace backend.Services.Implementations
             return Math.Max(puntos, 0);
         }
 
-        public async Task ActualizarResultadosAsync(int partidoId, int golesLocal, int golesVisitante)
+        public async Task ActualizarResultadosAsync(int prediccionId, int golesLocal, int golesVisitante)
         {
             try
             {
-                var partido = await _context.Partidos.FindAsync(partidoId);
-                if (partido == null)
-                    throw new ArgumentException($"Partido con ID {partidoId} no encontrado");
+                var prediccion = await _context.Predicciones.FindAsync(prediccionId);
 
-                partido.GolesLocal = golesLocal;
-                partido.GolesVisitante = golesVisitante;
-                partido.Finalizado = true;
-                partido.Estado = "Finalizado";
+                if (prediccion == null)
+                    throw new ArgumentException($"Predicción con ID {prediccionId} no encontrada");
 
-                var predicciones = await _context.Predicciones
-                    .Where(p => p.PartidoId == partidoId)
-                    .ToListAsync();
+                // Actualizar resultados reales
+                prediccion.GolesRealesLocal = golesLocal;
+                prediccion.GolesRealesVisitante = golesVisitante;
 
-                foreach (var prediccion in predicciones)
+                // Verificar si acertó
+                var esAcertada = prediccion.GolesLocalPredichos == golesLocal &&
+                                prediccion.GolesVisitantePredichos == golesVisitante;
+
+                prediccion.EsAcertada = esAcertada;
+
+                // Calcular puntos si acertó
+                if (esAcertada)
                 {
-                    var esAcertada = prediccion.GolesLocalPredichos == golesLocal &&
-                                    prediccion.GolesVisitantePredichos == golesVisitante;
-
-                    prediccion.EsAcertada = esAcertada;
-
-                    if (esAcertada)
-                    {
-                        var dto = await MapToResponseDto(prediccion);
-                        prediccion.PuntosObtenidos = await CalcularPuntajeAsync(dto);
-                    }
-                    else
-                    {
-                        prediccion.PuntosObtenidos = 0;
-                    }
+                    var dto = MapToResponseDto(prediccion);
+                    prediccion.PuntosObtenidos = await CalcularPuntajeAsync(dto);
+                }
+                else
+                {
+                    prediccion.PuntosObtenidos = 0;
                 }
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Resultados actualizados para predicción {PrediccionId}: {Local} {GolesLocal} - {GolesVisitante} {Visitante}",
+                    prediccionId, prediccion.Local, golesLocal, golesVisitante, prediccion.Visitante);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error al actualizar resultados del partido {partidoId}");
+                _logger.LogError(ex, $"Error al actualizar resultados de la predicción {prediccionId}");
                 throw;
             }
         }
 
-        private async Task<PrediccionResponseDto> MapToResponseDto(Prediccion prediccion)
+        private PrediccionResponseDto MapToResponseDto(Prediccion prediccion)
         {
             return new PrediccionResponseDto
             {
                 Id = prediccion.Id,
-                PartidoId = prediccion.PartidoId,
+                Local = prediccion.Local,
+                Visitante = prediccion.Visitante,
+                LigaIdLocal = prediccion.LigaIdLocal,
+                LigaIdVisitante = prediccion.LigaIdVisitante,
+                Temporada = prediccion.Temporada,
+                Competicion = prediccion.Competicion,
+                Estadio = prediccion.Estadio,
+                Bajas = prediccion.Bajas,
+                Contexto = prediccion.Contexto,
                 GolesLocalPredichos = prediccion.GolesLocalPredichos,
                 GolesVisitantePredichos = prediccion.GolesVisitantePredichos,
                 ProbabilidadLocal = prediccion.ProbabilidadLocal,
                 ProbabilidadEmpate = prediccion.ProbabilidadEmpate,
                 ProbabilidadVisitante = prediccion.ProbabilidadVisitante,
                 Confianza = prediccion.Confianza,
+                PromedioGolesLocal = prediccion.PromedioGolesLocal,
+                PromedioGolesVisitante = prediccion.PromedioGolesVisitante,
+                AnalisisDeepSeek = prediccion.AnalisisDeepSeek,
                 FechaPrediccion = prediccion.FechaPrediccion,
                 EsAcertada = prediccion.EsAcertada,
                 PuntosObtenidos = prediccion.PuntosObtenidos,
-                Comentarios = prediccion.Comentarios,
-                EquipoLocalNombre = prediccion.Partido?.Local,
-                EquipoVisitanteNombre = prediccion.Partido?.Visitante,
-                EstadoPartido = prediccion.Partido?.Estado,
-                GolesRealesLocal = prediccion.Partido?.GolesLocal,
-                GolesRealesVisitante = prediccion.Partido?.GolesVisitante
+                GolesRealesLocal = prediccion.GolesRealesLocal,
+                GolesRealesVisitante = prediccion.GolesRealesVisitante
             };
         }
     }

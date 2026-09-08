@@ -7,7 +7,6 @@ namespace backend.Services.Interfaces
     {
         Task<PrediccionResponseDto> GenerarPrediccionAsync(PartidoRequestDto request);
         Task<PrediccionResponseDto> ObtenerPrediccionAsync(int id);
-        IAsyncEnumerable<PrediccionResponseDto> ObtenerPrediccionesPorPartidoAsync(int partidoId);
         Task<bool> ValidarPrediccionAsync(PrediccionResponseDto prediccion);
         Task<decimal> CalcularConfianzaAsync(PrediccionResponseDto prediccion);
         Task<int> CalcularPuntajeAsync(PrediccionResponseDto prediccion);

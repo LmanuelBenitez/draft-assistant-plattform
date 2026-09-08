@@ -1,8 +1,9 @@
-using System.Text;
-using System.Text.Json;
+using backend.Models;
 using backend.Services.Config;
 using backend.Services.Interfaces;
 using Microsoft.Extensions.Options;
+using System.Text;
+using System.Text.Json;
 
 namespace backend.Services.Implementations
 {
@@ -64,34 +65,84 @@ namespace backend.Services.Implementations
         public async Task<string> ObtenerPrediccionFutbolAsync(
             string equipoLocal,
             string equipoVisitante,
+            double promedioGolesLocal,
+            double promedioGolesVisitante,
+            double probLocal,
+            double probEmpate,
+            double probVisitante,
+            string? competicion = null,
             string? estadio = null,
-            string? contexto = null)
+            string? bajas = null,
+            string? contexto = null,
+            List<PartidoHistorico>? historicoEnfrentamientos = null)
         {
             var prompt = new StringBuilder();
-            prompt.AppendLine($"Realiza un análisis detallado para el partido de fútbol entre {equipoLocal} y {equipoVisitante}.");
-            prompt.AppendLine();
 
+            // 1. Datos de la API
+            prompt.AppendLine($"ANALISIS: {equipoLocal} vs {equipoVisitante}");
+            prompt.AppendLine($"- Probabilidad {equipoLocal}: {probLocal:P0}");
+            prompt.AppendLine($"- Probabilidad Empate: {probEmpate:P0}");
+            prompt.AppendLine($"- Probabilidad {equipoVisitante}: {probVisitante:P0}");
+            prompt.AppendLine($"- Promedio goles {equipoLocal}: {promedioGolesLocal:F2}");
+            prompt.AppendLine($"- Promedio goles {equipoVisitante}: {promedioGolesVisitante:F2}");
+
+            // 2. Datos manuales (desde el frontend)
+            if (!string.IsNullOrEmpty(competicion))
+                prompt.AppendLine($"- Competicion: {competicion}");
             if (!string.IsNullOrEmpty(estadio))
-                prompt.AppendLine($"Estadio: {estadio}");
-
+                prompt.AppendLine($"- Estadio: {estadio}");
+            if (!string.IsNullOrEmpty(bajas))
+                prompt.AppendLine($"- Bajas importantes: {bajas}");
             if (!string.IsNullOrEmpty(contexto))
-                prompt.AppendLine($"Contexto adicional: {contexto}");
+                prompt.AppendLine($"- Contexto: {contexto}");
 
+            // 3. Historial de enfrentamientos (Head-to-Head)
+            if (historicoEnfrentamientos != null && historicoEnfrentamientos.Any())
+            {
+                prompt.AppendLine();
+                prompt.AppendLine("HISTORIAL DE ENFRENTAMIENTOS DIRECTOS (ultimos 5):");
+                foreach (var p in historicoEnfrentamientos.Take(5))
+                {
+                    prompt.AppendLine($"  {p.Local} {p.GolesLocal} - {p.GolesVisitante} {p.Visitante}");
+                }
+
+                // Estadisticas del H2H
+                var totalPartidos = historicoEnfrentamientos.Count;
+                var victoriasLocal = historicoEnfrentamientos.Count(p => p.GolesLocal > p.GolesVisitante);
+                var victoriasVisitante = historicoEnfrentamientos.Count(p => p.GolesVisitante > p.GolesLocal);
+                var empates = totalPartidos - victoriasLocal - victoriasVisitante;
+
+                prompt.AppendLine();
+                prompt.AppendLine("ESTADISTICAS H2H:");
+                prompt.AppendLine($"- {equipoLocal} gano: {victoriasLocal} de {totalPartidos} ({victoriasLocal * 100 / totalPartidos}%)");
+                prompt.AppendLine($"- Empates: {empates} de {totalPartidos} ({empates * 100 / totalPartidos}%)");
+                prompt.AppendLine($"- {equipoVisitante} gano: {victoriasVisitante} de {totalPartidos} ({victoriasVisitante * 100 / totalPartidos}%)");
+
+                // Promedio de goles en H2H
+                var promedioGolesH2H = historicoEnfrentamientos.Average(p => p.GolesLocal + p.GolesVisitante);
+                prompt.AppendLine($"- Promedio de goles por partido en H2H: {promedioGolesH2H:F2}");
+            }
+
+            // 4. Instrucciones para DeepSeek
             prompt.AppendLine();
-            prompt.AppendLine("Proporciona la predicción en formato JSON con la siguiente estructura:");
-            prompt.AppendLine("{");
-            prompt.AppendLine("  \"goles_local\": numero,");
-            prompt.AppendLine("  \"goles_visitante\": numero,");
-            prompt.AppendLine("  \"probabilidad_local\": decimal,");
-            prompt.AppendLine("  \"probabilidad_empate\": decimal,");
-            prompt.AppendLine("  \"probabilidad_visitante\": decimal,");
-            prompt.AppendLine("  \"analisis\": \"texto explicativo\",");
-            prompt.AppendLine("  \"factores_clave\": [\"factor1\", \"factor2\"],");
-            prompt.AppendLine("  \"recomendacion\": \"recomendación\"");
-            prompt.AppendLine("}");
+            prompt.AppendLine("INSTRUCCIONES PARA EL ANALISIS:");
+            prompt.AppendLine("1. Utiliza el historial de enfrentamientos directos como factor principal.");
+            prompt.AppendLine("2. Si un equipo domina claramente el H2H, mencionalo en la recomendacion.");
+            prompt.AppendLine("3. Si los enfrentamientos suelen tener muchos goles (>2.5), mencionalo.");
+            prompt.AppendLine("4. No uses frases genericas como 'sera un partido parejo' sin justificacion.");
+            prompt.AppendLine("5. Basa tu analisis en los datos proporcionados.");
+            prompt.AppendLine("6. Responde EXCLUSIVAMENTE en el siguiente formato JSON:");
+            prompt.AppendLine(@"
+            {
+              ""explicacion"": ""texto de maximo 4 lineas"",
+              ""factores_clave"": [""factor1"", ""factor2"", ""factor3""],
+              ""alertas"": [""alerta1"", ""alerta2""],
+              ""recomendacion"": ""Victoria de X|Empate|Victoria de Y""
+            }");
 
             return await ConsultarAsync(prompt.ToString(), 800);
         }
+
 
         public async Task<string> AnalizarEquipoAsync(string equipoNombre)
         {

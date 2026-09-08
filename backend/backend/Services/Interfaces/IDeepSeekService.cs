@@ -1,3 +1,5 @@
+using backend.Models;
+
 namespace backend.Services.Interfaces
 {
     public interface IDeepSeekService
@@ -13,8 +15,16 @@ namespace backend.Services.Interfaces
         Task<string> ObtenerPrediccionFutbolAsync(
             string equipoLocal,
             string equipoVisitante,
+            double promedioGolesLocal,
+            double promedioGolesVisitante,
+            double probLocal,
+            double probEmpate,
+            double probVisitante,
+            string? competicion = null,
             string? estadio = null,
-            string? contexto = null);
+            string? bajas = null,
+            string? contexto = null,
+            List<PartidoHistorico>? historicoEnfrentamientos = null);
 
         /// <summary>
         /// Analiza el rendimiento de un equipo y devuelve métricas clave.

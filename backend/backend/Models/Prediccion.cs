@@ -1,43 +1,39 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace backend.Models
+public class Prediccion
 {
-    [Table("Predicciones")]
-    public class Prediccion
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        [Required]
-        public required int PartidoId { get; set; }
+    // Equipos
+    public string Local { get; set; } = string.Empty;
+    public string Visitante { get; set; } = string.Empty;
+    public int? LigaIdLocal { get; set; }
+    public int? LigaIdVisitante { get; set; }
+    public string? Temporada { get; set; }
 
-        [Required]
-        public required int GolesLocalPredichos { get; set; }
+    // Datos manuales (frontend)
+    public string? Competicion { get; set; }
+    public string? Estadio { get; set; }
+    public string? Bajas { get; set; }
+    public string? Contexto { get; set; }
 
-        [Required]
-        public required int GolesVisitantePredichos { get; set; }
+    // Resultado Poisson
+    public int GolesLocalPredichos { get; set; }
+    public int GolesVisitantePredichos { get; set; }
+    public decimal ProbabilidadLocal { get; set; }
+    public decimal ProbabilidadEmpate { get; set; }
+    public decimal ProbabilidadVisitante { get; set; }
+    public decimal Confianza { get; set; }
 
-        public decimal? ProbabilidadLocal { get; set; }
+    // Promedios usados
+    public decimal PromedioGolesLocal { get; set; }
+    public decimal PromedioGolesVisitante { get; set; }
 
-        public decimal? ProbabilidadEmpate { get; set; }
+    // DeepSeek
+    public string? AnalisisDeepSeek { get; set; }
 
-        public decimal? ProbabilidadVisitante { get; set; }
-
-        public decimal? Confianza { get; set; }
-
-        public DateTime FechaPrediccion { get; set; } = DateTime.UtcNow;
-
-        public bool EsAcertada { get; set; } = false;
-
-        public int? PuntosObtenidos { get; set; }
-
-        [MaxLength(500)]
-        public string? Comentarios { get; set; }
-
-        // Navigation property
-        [ForeignKey("PartidoId")]
-        public virtual Partido Partido { get; set; } = null!;
-    }
+    // Metadata
+    public DateTime FechaPrediccion { get; set; }
+    public bool EsAcertada { get; set; }
+    public int? PuntosObtenidos { get; set; }
+    public int? GolesRealesLocal { get; set; }
+    public int? GolesRealesVisitante { get; set; }
 }

@@ -19,7 +19,7 @@ public class PartidoApi
 public class PartidoInfo
 {
     public DateTime Date { get; set; }
-    public int Status { get; set; }  // 0 = pendiente, 1 = finalizado, etc.
+    public EstatusInfo Status { get; set; } = new();
 }
 
 public class PartidoEquipos
@@ -38,6 +38,12 @@ public class PartidoGoles
 {
     public int Home { get; set; }
     public int Away { get; set; }
+}
+
+public class EstatusInfo
+{
+    public string Long { get; set; } = string.Empty;
+    public string Short { get; set; } = string.Empty;
 }
 
 /// <summary>

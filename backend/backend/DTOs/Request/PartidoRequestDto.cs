@@ -11,7 +11,21 @@ namespace backend.DTOs.Request
         public required string Visitante { get; init; }
 
         [Required]
-        public required DateTime FechaHora { get; init; }
+        public required string LigaIdLocal { get; init; }
+
+        [Required]
+        public required string LigaIdVisitante { get; init; }
+
+        [Required]
+        public required string Temporada { get; init; }
+
+        public string? Competicion { get; init; }
+
+        public string? Bajas { get; init; }
+
+        public string? Contexto { get; init; }
+
+        public DateTime? FechaHora { get; init; }
 
         [MaxLength(50)]
         public string? Estadio { get; init; }
