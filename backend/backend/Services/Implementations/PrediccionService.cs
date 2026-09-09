@@ -101,13 +101,13 @@ namespace backend.Services.Implementations
                     }
                 }
 
-                // 7. Crear y guardar la predicción (SIN partido en BD)
+                // 7. Guardar la predicción en BD (sin Partido)
                 var prediccion = new Prediccion
                 {
                     Local = request.Local,
                     Visitante = request.Visitante,
-                    LigaIdLocal = int.Parse(request.LigaIdLocal),
-                    LigaIdVisitante = int.Parse(request.LigaIdVisitante),
+                    LigaIdLocal = int.TryParse(request.LigaIdLocal, out var ligaLocal) ? ligaLocal : (int?)null,
+                    LigaIdVisitante = int.TryParse(request.LigaIdVisitante, out var ligaVisitante) ? ligaVisitante : (int?)null,
                     Temporada = request.Temporada,
                     Competicion = request.Competicion,
                     Estadio = request.Estadio,
@@ -115,9 +115,9 @@ namespace backend.Services.Implementations
                     Contexto = request.Contexto,
                     GolesLocalPredichos = marcador.GolesLocal,
                     GolesVisitantePredichos = marcador.GolesVisitante,
-                    ProbabilidadLocal = (decimal)probabilidades.Local,
-                    ProbabilidadEmpate = (decimal)probabilidades.Empate,
-                    ProbabilidadVisitante = (decimal)probabilidades.Visitante,
+                    ProbabilidadLocal = probabilidades.Local,
+                    ProbabilidadEmpate = probabilidades.Empate,
+                    ProbabilidadVisitante = probabilidades.Visitante,
                     Confianza = (decimal)confianza,
                     PromedioGolesLocal = (decimal)promedioLocal,
                     PromedioGolesVisitante = (decimal)promedioVisitante,
@@ -125,21 +125,6 @@ namespace backend.Services.Implementations
                 };
 
                 _context.Predicciones.Add(prediccion);
-                await _context.SaveChangesAsync();
-
-                // 7.5. Crear y guardar el partido en BD (si no existe)
-                var partido = new Partido
-                {
-                    Local = request.Local,
-                    Visitante = request.Visitante,
-                    FechaHora = request.FechaHora ?? DateTime.UtcNow,
-                    Competicion = request.Competicion,
-                    Estadio = request.Estadio,
-                    GolesLocal = 0,
-                    GolesVisitante = 0
-                };
-
-                _context.Partidos.Add(partido);
                 await _context.SaveChangesAsync();
 
                 // 8. Obtener análisis de DeepSeek (con TODOS los datos)
@@ -203,19 +188,15 @@ namespace backend.Services.Implementations
 
         public async Task<bool> ValidarPrediccionAsync(PrediccionResponseDto prediccion)
         {
-            // Validar que los goles no sean negativos
             if (prediccion.GolesLocalPredichos < 0 || prediccion.GolesVisitantePredichos < 0)
                 return false;
 
-            // Validar que los goles estén dentro de un rango razonable
             if (prediccion.GolesLocalPredichos > 10 || prediccion.GolesVisitantePredichos > 10)
                 return false;
 
-            // Validar que la confianza esté en el rango 0-1
             if (prediccion.Confianza < 0 || prediccion.Confianza > 1)
                 return false;
 
-            // Validar que las probabilidades sumen aproximadamente 1
             var suma = prediccion.ProbabilidadLocal +
                        prediccion.ProbabilidadEmpate +
                        prediccion.ProbabilidadVisitante;
@@ -225,16 +206,13 @@ namespace backend.Services.Implementations
 
         public async Task<decimal> CalcularConfianzaAsync(PrediccionResponseDto prediccion)
         {
-            // La confianza ya está calculada, pero podemos refinarla
             var confianzaBase = prediccion.Confianza;
 
-            // Si hay probabilidades, ajustar la confianza
             var maxProb = Math.Max(
                 Math.Max(prediccion.ProbabilidadLocal, prediccion.ProbabilidadVisitante),
                 prediccion.ProbabilidadEmpate);
 
-            // Ajustar confianza basada en la probabilidad máxima
-            var ajuste = (maxProb - 0.33m) * 1.5m;
+            var ajuste = (maxProb - 0.33m) * 1.5m   ;
             confianzaBase = Math.Min(confianzaBase + ajuste, 0.95m);
             confianzaBase = Math.Max(confianzaBase, 0.05m);
 
@@ -277,17 +255,14 @@ namespace backend.Services.Implementations
                 if (prediccion == null)
                     throw new ArgumentException($"Predicción con ID {prediccionId} no encontrada");
 
-                // Actualizar resultados reales
                 prediccion.GolesRealesLocal = golesLocal;
                 prediccion.GolesRealesVisitante = golesVisitante;
 
-                // Verificar si acertó
                 var esAcertada = prediccion.GolesLocalPredichos == golesLocal &&
                                 prediccion.GolesVisitantePredichos == golesVisitante;
 
                 prediccion.EsAcertada = esAcertada;
 
-                // Calcular puntos si acertó
                 if (esAcertada)
                 {
                     var dto = MapToResponseDto(prediccion);

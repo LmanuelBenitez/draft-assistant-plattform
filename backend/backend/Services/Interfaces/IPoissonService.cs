@@ -15,7 +15,7 @@ namespace backend.Services.Interfaces
         /// Calcula las probabilidades de resultado (local, empate, visitante)
         /// para un partido dados los promedios de goles de ambos equipos.
         /// </summary>
-        Task<(double Local, double Empate, double Visitante)> CalcularProbabilidadesPartidoAsync(
+        Task<(decimal Local, decimal Empate, decimal Visitante)> CalcularProbabilidadesPartidoAsync(
             double promedioLocal,
             double promedioVisitante,
             int maxGoles = 10);

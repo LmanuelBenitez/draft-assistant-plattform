@@ -6,6 +6,7 @@ using backend.Services.Implementations;
 using backend.Services.Interfaces;
 using backend.Validators;
 using FluentValidation;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Extensions
@@ -22,14 +23,7 @@ namespace backend.Extensions
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
             services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(connectionString,
-                    sqlOptions =>
-                    {
-                        sqlOptions.EnableRetryOnFailure(
-                            maxRetryCount: 3,
-                            maxRetryDelay: TimeSpan.FromSeconds(30),
-                            errorNumbersToAdd: null);
-                    }));
+                options.UseSqlite(connectionString));
 
             return services;
         }
@@ -116,39 +110,6 @@ namespace backend.Extensions
                                .AllowCredentials();
                     }
                 });
-            });
-
-            return services;
-        }
-
-        /// <summary>
-        /// Configura Swagger/OpenAPI
-        /// </summary>
-        public static IServiceCollection AddSwaggerDocumentation(
-            this IServiceCollection services)
-        {
-            services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-                {
-                    Title = "Draft Assistant Platform API",
-                    Version = "v1",
-                    Description = "API para gestión de predicciones deportivas",
-                    Contact = new Microsoft.OpenApi.Models.OpenApiContact
-                    {
-                        Name = "Draft Assistant Team",
-                        Email = "support@draftassistant.com"
-                    }
-                });
-
-                // Configurar para usar comentarios XML
-                var xmlFile = $"{System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                if (File.Exists(xmlPath))
-                {
-                    c.IncludeXmlComments(xmlPath);
-                }
             });
 
             return services;

@@ -20,11 +20,6 @@ public class FootballApiService : IFootballApiService
         _httpClient = httpClient;
         _config = config.Value;
         _logger = logger;
-
-        // Configurar HttpClient
-        _httpClient.BaseAddress = new Uri(_config.BaseUrl);
-        _httpClient.DefaultRequestHeaders.Add("x-apisports-key", _config.ApiKey);
-        _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
     public async Task<EstadisticasEquipo> GetEstadisticasEquipoAsync(string equipo, string leagueId, string season)
@@ -76,7 +71,7 @@ public class FootballApiService : IFootballApiService
         try
         {
             // Buscar equipo por nombre
-            var teamId = await GetTeamIdAsync(equipo, leagueId, season);
+            var teamId = await GetTeamIdAsync(equipo, leagueId);
             if (teamId == 0)
             {
                 _logger.LogWarning("Equipo no encontrado: {Equipo}", equipo);
@@ -115,8 +110,8 @@ public class FootballApiService : IFootballApiService
         try
         {
             // 1. Obtener IDs de ambos equipos
-            var idLocal = await GetTeamIdAsync(local, leagueIdLocal, season);
-            var idVisitante = await GetTeamIdAsync(visitante, leagueIdVisitante, season);
+            var idLocal = await GetTeamIdAsync(local, leagueIdLocal);
+            var idVisitante = await GetTeamIdAsync(visitante, leagueIdVisitante);
 
             if (idLocal == 0 || idVisitante == 0)
             {
@@ -166,11 +161,11 @@ public class FootballApiService : IFootballApiService
         }
     }
 
-    private async Task<int> GetTeamIdAsync(string nombreEquipo, string leagueId, string season)
+    private async Task<int> GetTeamIdAsync(string nombreEquipo, string leagueId)
     {
         try
         {
-            var url = $"teams?name={Uri.EscapeDataString(nombreEquipo)}&league={leagueId}&season={season}";
+            var url = $"teams?name={Uri.EscapeDataString(nombreEquipo)}&league={leagueId}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 

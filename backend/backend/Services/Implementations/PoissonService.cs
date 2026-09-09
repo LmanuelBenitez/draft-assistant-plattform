@@ -50,7 +50,7 @@ namespace backend.Services.Implementations
             return result;
         }
 
-        public async Task<(double Local, double Empate, double Visitante)> CalcularProbabilidadesPartidoAsync(
+        public async Task<(decimal Local, decimal Empate, decimal Visitante)> CalcularProbabilidadesPartidoAsync(
             double promedioLocal,
             double promedioVisitante,
             int maxGoles = 10)
@@ -58,9 +58,9 @@ namespace backend.Services.Implementations
             if (promedioLocal < 0 || promedioVisitante < 0)
                 throw new ArgumentException("Los promedios de goles deben ser mayores o iguales a 0");
 
-            double probLocal = 0;
-            double probEmpate = 0;
-            double probVisitante = 0;
+            decimal probLocal = 0;
+            decimal probEmpate = 0;
+            decimal probVisitante = 0;
 
             // Calcular probabilidad de cada marcador posible
             for (int golesLocal = 0; golesLocal <= maxGoles; golesLocal++)
@@ -71,11 +71,11 @@ namespace backend.Services.Implementations
                                   CalcularProbabilidadPoisson(promedioVisitante, golesVisitante);
 
                     if (golesLocal > golesVisitante)
-                        probLocal += prob;
+                        probLocal += (decimal)prob;
                     else if (golesLocal == golesVisitante)
-                        probEmpate += prob;
+                        probEmpate += (decimal)prob;
                     else
-                        probVisitante += prob;
+                        probVisitante += (decimal)prob;
                 }
             }
 

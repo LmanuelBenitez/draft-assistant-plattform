@@ -12,10 +12,14 @@ namespace backend.Data.Configurations
 
             builder.HasKey(p => p.Id);
 
-            builder.Property(p => p.PartidoId)
-                .IsRequired();
+            // ✅ Eliminar PartidoId (no existe en el modelo)
+            // builder.Property(p => p.PartidoId).IsRequired();
 
-            builder.Property(p => p.UsuarioId)
+            builder.Property(p => p.Local)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.Property(p => p.Visitante)
                 .IsRequired()
                 .HasMaxLength(100);
 
@@ -44,20 +48,11 @@ namespace backend.Data.Configurations
             builder.Property(p => p.EsAcertada)
                 .HasDefaultValue(false);
 
-            builder.Property(p => p.Comentarios)
-                .HasMaxLength(500);
-
-            // Relaciones
-            builder.HasOne(p => p.Partido)
-                .WithMany(p => p.Predicciones)
-                .HasForeignKey(p => p.PartidoId)
-                .OnDelete(DeleteBehavior.Cascade);
-
             // Índices para mejorar rendimiento
-            builder.HasIndex(p => p.UsuarioId);
             builder.HasIndex(p => p.FechaPrediccion);
             builder.HasIndex(p => p.EsAcertada);
-            builder.HasIndex(p => new { p.PartidoId, p.UsuarioId });
+            builder.HasIndex(p => p.Local);
+            builder.HasIndex(p => p.Visitante);
         }
     }
 }

@@ -27,7 +27,7 @@ namespace backend.DTOs.Response
         public decimal Confianza { get; init; }
 
         // Promedios usados
-        public decimal PromedioGolesLocal { get; init; }
+        public decimal  PromedioGolesLocal { get; init; }
         public decimal PromedioGolesVisitante { get; init; }
 
         // DeepSeek

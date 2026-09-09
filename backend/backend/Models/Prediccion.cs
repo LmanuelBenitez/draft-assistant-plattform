@@ -1,6 +1,10 @@
+namespace backend.Models;
+
 public class Prediccion
 {
     public int Id { get; set; }
+
+    public int PartidoId { get; set; }
 
     // Equipos
     public string Local { get; set; } = string.Empty;
@@ -22,8 +26,6 @@ public class Prediccion
     public decimal ProbabilidadEmpate { get; set; }
     public decimal ProbabilidadVisitante { get; set; }
     public decimal Confianza { get; set; }
-
-    // Promedios usados
     public decimal PromedioGolesLocal { get; set; }
     public decimal PromedioGolesVisitante { get; set; }
 
@@ -31,7 +33,7 @@ public class Prediccion
     public string? AnalisisDeepSeek { get; set; }
 
     // Metadata
-    public DateTime FechaPrediccion { get; set; }
+    public DateTime FechaPrediccion { get; set; } = DateTime.UtcNow;
     public bool EsAcertada { get; set; }
     public int? PuntosObtenidos { get; set; }
     public int? GolesRealesLocal { get; set; }

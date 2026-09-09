@@ -23,10 +23,11 @@ namespace backend.Validators
                 .Must(x => x.Local != x.Visitante)
                 .WithMessage("El equipo local y visitante no pueden ser el mismo");
 
+            // ✅ Corregido: FechaHora es nullable
             RuleFor(x => x.FechaHora)
                 .NotEmpty()
                 .WithMessage("La fecha y hora del partido es obligatoria")
-                .Must(FechaEnFuturo)
+                .Must(fecha => fecha.HasValue && FechaEnFuturo(fecha.Value))
                 .WithMessage("La fecha del partido debe ser en el futuro");
 
             RuleFor(x => x.Estadio)
@@ -49,17 +50,6 @@ namespace backend.Validators
                 .GreaterThanOrEqualTo(0)
                 .When(x => x.GolesVisitante.HasValue)
                 .WithMessage("Los goles del visitante no pueden ser negativos");
-
-            RuleFor(x => x.Finalizado)
-                .Must((dto, finalizado) =>
-                {
-                    if (finalizado)
-                    {
-                        return dto.GolesLocal.HasValue && dto.GolesVisitante.HasValue;
-                    }
-                    return true;
-                })
-                .WithMessage("Para marcar un partido como finalizado, debe proporcionar los goles");
         }
 
         private static bool FechaEnFuturo(DateTime fecha)

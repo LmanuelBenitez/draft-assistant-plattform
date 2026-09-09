@@ -17,15 +17,13 @@ namespace backend.Repositories.Implementations
         public async Task<Prediccion?> GetByIdAsync(int id)
         {
             return await _context.Predicciones
-                .Include(p => p.Partido)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        public async IAsyncEnumerable<Prediccion> GetByUsuarioIdAsync(string usuarioId)
+        public async IAsyncEnumerable<Prediccion> GetByLocalAsync(string local)
         {
             var query = _context.Predicciones
-                .Include(p => p.Partido)
-                .Where(p => p.UsuarioId == usuarioId)
+                .Where(p => p.Local == local)
                 .OrderByDescending(p => p.FechaPrediccion)
                 .AsAsyncEnumerable();
 
@@ -35,11 +33,10 @@ namespace backend.Repositories.Implementations
             }
         }
 
-        public async IAsyncEnumerable<Prediccion> GetByPartidoIdAsync(int partidoId)
+        public async IAsyncEnumerable<Prediccion> GetByVisitanteAsync(string visitante)
         {
             var query = _context.Predicciones
-                .Include(p => p.Partido)
-                .Where(p => p.PartidoId == partidoId)
+                .Where(p => p.Visitante == visitante)
                 .OrderByDescending(p => p.FechaPrediccion)
                 .AsAsyncEnumerable();
 
@@ -49,11 +46,10 @@ namespace backend.Repositories.Implementations
             }
         }
 
-        public async IAsyncEnumerable<Prediccion> GetByPartidoIdAndUsuarioIdAsync(int partidoId, string usuarioId)
+        public async IAsyncEnumerable<Prediccion> GetByEquipoAsync(string equipo)
         {
             var query = _context.Predicciones
-                .Include(p => p.Partido)
-                .Where(p => p.PartidoId == partidoId && p.UsuarioId == usuarioId)
+                .Where(p => p.Local == equipo || p.Visitante == equipo)
                 .OrderByDescending(p => p.FechaPrediccion)
                 .AsAsyncEnumerable();
 
@@ -66,7 +62,6 @@ namespace backend.Repositories.Implementations
         public async IAsyncEnumerable<Prediccion> GetPrediccionesAcertadasAsync()
         {
             var query = _context.Predicciones
-                .Include(p => p.Partido)
                 .Where(p => p.EsAcertada)
                 .OrderByDescending(p => p.FechaPrediccion)
                 .AsAsyncEnumerable();
@@ -102,36 +97,50 @@ namespace backend.Repositories.Implementations
             return true;
         }
 
-        public async IAsyncEnumerable<Prediccion> GetPrediccionesWithDetailsAsync(int? partidoId = null)
+        public async IAsyncEnumerable<Prediccion> GetPrediccionesWithDetailsAsync()
         {
             var query = _context.Predicciones
-                .Include(p => p.Partido)
-                .AsQueryable();
-
-            if (partidoId.HasValue)
-                query = query.Where(p => p.PartidoId == partidoId.Value);
-
-            var asyncQuery = query
                 .OrderByDescending(p => p.FechaPrediccion)
                 .AsAsyncEnumerable();
 
-            await foreach (var item in asyncQuery)
+            await foreach (var item in query)
             {
                 yield return item;
             }
         }
 
-        public async Task<int> CountByUsuarioIdAsync(string usuarioId)
+        public async Task<int> CountByLocalAsync(string local)
         {
             return await _context.Predicciones
-                .Where(p => p.UsuarioId == usuarioId)
+                .Where(p => p.Local == local)
                 .CountAsync();
         }
 
-        public async Task<int> CountAcertadasByUsuarioIdAsync(string usuarioId)
+        public async Task<int> CountByVisitanteAsync(string visitante)
         {
             return await _context.Predicciones
-                .Where(p => p.UsuarioId == usuarioId && p.EsAcertada)
+                .Where(p => p.Visitante == visitante)
+                .CountAsync();
+        }
+
+        public async Task<int> CountByEquipoAsync(string equipo)
+        {
+            return await _context.Predicciones
+                .Where(p => p.Local == equipo || p.Visitante == equipo)
+                .CountAsync();
+        }
+
+        public async Task<int> CountAcertadasByLocalAsync(string local)
+        {
+            return await _context.Predicciones
+                .Where(p => p.Local == local && p.EsAcertada)
+                .CountAsync();
+        }
+
+        public async Task<int> CountAcertadasByVisitanteAsync(string visitante)
+        {
+            return await _context.Predicciones
+                .Where(p => p.Visitante == visitante && p.EsAcertada)
                 .CountAsync();
         }
     }

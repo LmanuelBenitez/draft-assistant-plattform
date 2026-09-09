@@ -1,5 +1,6 @@
 using backend.Extensions;
 using backend.Middleware;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,8 +18,9 @@ builder.Services.AddFootballApiService(builder.Configuration);
 // Configurar CORS
 builder.Services.AddCorsPolicies(builder.Configuration);
 
-// Configurar Swagger
-builder.Services.AddSwaggerDocumentation();
+
+//Configurar OpenAPI
+builder.Services.AddOpenApi();
 
 // Configurar FluentValidation
 builder.Services.AddFluentValidationServices();
@@ -34,11 +36,8 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Draft Assistant API V1");
-    });
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
