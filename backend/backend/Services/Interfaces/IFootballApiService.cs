@@ -14,5 +14,5 @@ public interface IFootballApiService
     /// </summary>
     Task<EstadisticasEquipo> GetEstadisticasEquipoAsync(string equipo, string leagueId, string season);
 
-    Task<List<PartidoHistorico>> GetPartidosHead2HeadAsync(string local, string visitante, string leagueIdLocal, string leagueIdVisitante, string season, int limite = 5);
+    Task<List<PartidoHistorico>> GetPartidosHead2HeadAsync(string local, string visitante, string leagueId, string season, int limite = 5);
 }

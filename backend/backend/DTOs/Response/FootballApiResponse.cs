@@ -76,6 +76,7 @@ public class EstatusInfo
 /// </summary>
 public class EstadisticasEquipo
 {
+    public string EquipoId { get; set; } = string.Empty;
     public string Equipo { get; set; } = string.Empty;
     public int PartidosJugados { get; set; }
     public double PromedioGolesFavor { get; set; }
@@ -91,6 +92,8 @@ public class EstadisticasEquipo
 /// </summary>
 public class PartidoHistorico
 {
+    public int LocalId { get; set; }
+    public int VisitanteId { get; set; }
     public string Local { get; set; } = string.Empty;
     public string Visitante { get; set; } = string.Empty;
     public int GolesLocal { get; set; }

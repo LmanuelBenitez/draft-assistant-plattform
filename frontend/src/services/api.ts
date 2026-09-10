@@ -21,7 +21,7 @@ apiClient.interceptors.response.use(
 export const predecirPartido = async (
   request: PartidoRequest
 ): Promise<PrediccionResponse> => {
-  const response = await apiClient.post<PrediccionResponse>('/prediccion', request);
+  const response = await apiClient.post<PrediccionResponse>('/Prediccion/generar', request);
   return response.data;
 };
 

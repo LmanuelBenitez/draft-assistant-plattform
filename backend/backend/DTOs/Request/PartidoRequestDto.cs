@@ -11,10 +11,7 @@ namespace backend.DTOs.Request
         public required string Visitante { get; init; }
 
         [Required]
-        public required string LigaIdLocal { get; init; }
-
-        [Required]
-        public required string LigaIdVisitante { get; init; }
+        public required string LigaId { get; init; }
 
         [Required]
         public required string Temporada { get; init; }

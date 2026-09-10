@@ -17,7 +17,16 @@ namespace backend.Models
         public required string Visitante { get; set; }
 
         [Required]
-        public required DateTime FechaHora { get; set; }
+        public required int? LigaId { get; set; }
+
+        [Required]
+        public required string Temporada { get; set; }
+
+        public string? Bajas { get; set; }
+
+        public string? Contexto { get; set; }
+
+        public DateTime? FechaHora { get; set; }
 
         [MaxLength(50)]
         public string? Estadio { get; set; }

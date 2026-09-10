@@ -10,7 +10,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            ⚽ Asistente de Apuestas de Fútbol
+            Asistente Draft
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
             Predice resultados con inteligencia artificial
