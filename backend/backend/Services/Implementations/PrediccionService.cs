@@ -37,13 +37,11 @@ namespace backend.Services.Implementations
 
                 // 2. Obtener estadísticas desde API-Football
                 var statsLocal = await _footballApi.GetEstadisticasEquipoAsync(
-                    request.Local, request.LigaIdLocal, request.Temporada);
+                    request.Local, request.LigaId, request.Temporada);
                 var statsVisitante = await _footballApi.GetEstadisticasEquipoAsync(
-                    request.Visitante, request.LigaIdVisitante, request.Temporada);
+                    request.Visitante, request.LigaId, request.Temporada);
                 var historicoH2H = await _footballApi.GetPartidosHead2HeadAsync(
-                    request.Local, request.Visitante,
-                    request.LigaIdLocal, request.LigaIdVisitante,
-                    request.Temporada);
+                    statsLocal.EquipoId, statsVisitante.EquipoId, request.LigaId, request.Temporada);
 
                 // 3. Calcular promedios base
                 var promedioLocalBase = statsLocal.PromedioGolesFavor > 0 ? statsLocal.PromedioGolesFavor : 1.0;
@@ -57,14 +55,14 @@ namespace backend.Services.Implementations
                 {
                     // Calcular promedios en enfrentamientos directos
                     var golesLocalH2H = historicoH2H
-                        .Where(p => p.Local == request.Local)
-                        .Select(p => p.GolesLocal)
+                        .Where(p => p.Local == request.Local || p.Visitante == request.Local)
+                        .Select(p => p.Local == request.Local ? p.GolesLocal : p.GolesVisitante)
                         .DefaultIfEmpty(0)
                         .Average();
 
                     var golesVisitanteH2H = historicoH2H
-                        .Where(p => p.Visitante == request.Visitante)
-                        .Select(p => p.GolesVisitante)
+                        .Where(p => p.Local == request.Visitante || p.Visitante == request.Visitante)
+                        .Select(p => p.Local == request.Visitante ? p.GolesLocal : p.GolesVisitante)
                         .DefaultIfEmpty(0)
                         .Average();
 
@@ -106,8 +104,8 @@ namespace backend.Services.Implementations
                 {
                     Local = request.Local,
                     Visitante = request.Visitante,
-                    LigaIdLocal = int.TryParse(request.LigaIdLocal, out var ligaLocal) ? ligaLocal : (int?)null,
-                    LigaIdVisitante = int.TryParse(request.LigaIdVisitante, out var ligaVisitante) ? ligaVisitante : (int?)null,
+                    LigaIdLocal = int.TryParse(request.LigaId, out var ligaLocal) ? ligaLocal : (int?)null,
+                    LigaIdVisitante = int.TryParse(request.LigaId, out var ligaVisitante) ? ligaVisitante : (int?)null,
                     Temporada = request.Temporada,
                     Competicion = request.Competicion,
                     Estadio = request.Estadio,
@@ -125,6 +123,26 @@ namespace backend.Services.Implementations
                 };
 
                 _context.Predicciones.Add(prediccion);
+                await _context.SaveChangesAsync();
+
+                // 7.5. Guardar el partido en BD (si no existe)
+                var partido = new Partido
+                {
+                    Local = request.Local,
+                    Visitante = request.Visitante,
+                    LigaId = int.TryParse(request.LigaId, out var liga) ? liga : (int?)null,
+                    Temporada = request.Temporada,
+                    Competicion = request.Competicion,
+                    Estadio = request.Estadio,
+                    Bajas = request.Bajas,
+                    Contexto = request.Contexto,
+                    FechaHora = request.FechaHora,
+                    GolesLocal = request.GolesLocal,
+                    GolesVisitante = request.GolesVisitante,
+                    Estado = request.Estado
+                };
+
+                _context.Partidos.Add(partido);
                 await _context.SaveChangesAsync();
 
                 // 8. Obtener análisis de DeepSeek (con TODOS los datos)

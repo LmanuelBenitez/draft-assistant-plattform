@@ -39,16 +39,26 @@ public class FootballApiService : IFootballApiService
                 };
             }
 
-            var golesFavor = partidos.Select(p => p.GolesLocal).ToList();
-            var golesContra = partidos.Select(p => p.GolesVisitante).ToList();
+            var comparer = StringComparison.OrdinalIgnoreCase;
+
+            var golesFavor = partidos
+                .Select(p => p.Local.Equals(equipo, comparer) ? p.GolesLocal : p.GolesVisitante)
+                .ToList();
+
+            var golesContra = partidos
+                .Select(p => p.Local.Equals(equipo, comparer) ? p.GolesVisitante : p.GolesLocal)
+                .ToList();
+
+            var equipoId = partidos.First().Local.Equals(equipo, comparer) ? partidos.First().LocalId : partidos.First().VisitanteId;
 
             // Calcular victorias, empates, derrotas
-            var victorias = partidos.Count(p => p.GolesLocal > p.GolesVisitante);
-            var empates = partidos.Count(p => p.GolesLocal == p.GolesVisitante);
-            var derrotas = partidos.Count(p => p.GolesLocal < p.GolesVisitante);
+            var victorias = golesFavor.Where((g, i) => g > golesContra[i]).Count();
+            var empates = golesFavor.Where((g, i) => g == golesContra[i]).Count();
+            var derrotas = golesFavor.Where((g, i) => g < golesContra[i]).Count();
 
             return new EstadisticasEquipo
             {
+                EquipoId = equipoId.ToString(),
                 Equipo = equipo,
                 PartidosJugados = partidos.Count,
                 PromedioGolesFavor = golesFavor.Average(),
@@ -71,7 +81,7 @@ public class FootballApiService : IFootballApiService
         try
         {
             // Buscar equipo por nombre
-            var teamId = await GetTeamIdAsync(equipo, leagueId);
+            var teamId = await GetTeamIdAsync(equipo, leagueId, season);
             if (teamId == 0)
             {
                 _logger.LogWarning("Equipo no encontrado: {Equipo}", equipo);
@@ -79,7 +89,7 @@ public class FootballApiService : IFootballApiService
             }
 
             // Obtener partidos del equipo
-            var url = $"fixtures?team={teamId}&league={leagueId}&season={season}&status=FT&limit={limite}";
+            var url = $"fixtures?team={teamId}&league={leagueId}&status=FT&last={limite}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
@@ -91,6 +101,8 @@ public class FootballApiService : IFootballApiService
 
             return result.Response.Select(p => new PartidoHistorico
             {
+                LocalId = p.Teams.Home.Id,
+                VisitanteId = p.Teams.Away.Id,
                 Local = p.Teams.Home.Name,
                 Visitante = p.Teams.Away.Name,
                 GolesLocal = p.Goals.Home,
@@ -105,25 +117,15 @@ public class FootballApiService : IFootballApiService
         }
     }
 
-    public async Task<List<PartidoHistorico>> GetPartidosHead2HeadAsync(string local, string visitante, string leagueIdLocal, string leagueIdVisitante, string season, int limite = 5)
+    public async Task<List<PartidoHistorico>> GetPartidosHead2HeadAsync(string localId, string visitanteId, string leagueId, string season, int limite = 5)
     {
         try
         {
-            // 1. Obtener IDs de ambos equipos
-            var idLocal = await GetTeamIdAsync(local, leagueIdLocal);
-            var idVisitante = await GetTeamIdAsync(visitante, leagueIdVisitante);
-
-            if (idLocal == 0 || idVisitante == 0)
-            {
-                _logger.LogWarning("No se encontraron IDs para {Local} o {Visitante}", local, visitante);
-                return new List<PartidoHistorico>();
-            }
-
-            // 2. Construir URL para Head-to-Head
+            
             // Ejemplo: fixtures/headtohead?h2h=541-529&limit=5
-            var url = $"fixtures/headtohead?h2h={idLocal}-{idVisitante}&status=FT&limit={limite}";
+            var url = $"fixtures/headtohead?h2h={localId}-{visitanteId}&status=FT&last={limite}";
 
-            // 3. Hacer la petición a la API
+            // Hacer la petición a la API
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
@@ -146,26 +148,26 @@ public class FootballApiService : IFootballApiService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Error HTTP al obtener Head-to-Head entre {Local} y {Visitante}", local, visitante);
+            _logger.LogError(ex, "Error HTTP al obtener Head-to-Head entre {Local} y {Visitante}", localId, visitanteId);
             return new List<PartidoHistorico>();
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Error al parsear JSON de Head-to-Head entre {Local} y {Visitante}", local, visitante);
+            _logger.LogError(ex, "Error al parsear JSON de Head-to-Head entre {Local} y {Visitante}", localId, visitanteId);
             return new List<PartidoHistorico>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error inesperado al obtener Head-to-Head entre {Local} y {Visitante}", local, visitante);
+            _logger.LogError(ex, "Error inesperado al obtener Head-to-Head entre {Local} y {Visitante}", localId, visitanteId);
             return new List<PartidoHistorico>();
         }
     }
 
-    private async Task<int> GetTeamIdAsync(string nombreEquipo, string leagueId)
+    private async Task<int> GetTeamIdAsync(string nombreEquipo, string leagueId, string season)
     {
         try
         {
-            var url = $"teams?name={Uri.EscapeDataString(nombreEquipo)}&league={leagueId}";
+            var url = $"teams?name={Uri.EscapeDataString(nombreEquipo)}&league={leagueId}&season={season}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 

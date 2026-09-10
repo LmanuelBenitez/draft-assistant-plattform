@@ -124,18 +124,33 @@ const Historial: React.FC<HistorialProps> = ({ predicciones, onClear }) => {
                 <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
                   {formatearProbabilidad(prediccion.probabilidades.local)}
                 </p>
+                {prediccion.golesLocalPredichos !== undefined && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    ⚽ {prediccion.golesLocalPredichos}
+                  </p>
+                )}
               </div>
               <div className="text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Empate</p>
                 <p className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">
                   {formatearProbabilidad(prediccion.probabilidades.empate)}
                 </p>
+                {prediccion.confianza !== undefined && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    🎯 {formatearProbabilidad(prediccion.confianza)}
+                  </p>
+                )}
               </div>
               <div className="text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Visitante</p>
                 <p className="text-sm font-semibold text-red-600 dark:text-red-400">
                   {formatearProbabilidad(prediccion.probabilidades.visitante)}
                 </p>
+                {prediccion.golesVisitantePredichos !== undefined && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    ⚽ {prediccion.golesVisitantePredichos}
+                  </p>
+                )}
               </div>
             </div>
           </div>

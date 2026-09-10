@@ -53,6 +53,9 @@ namespace backend.Extensions
             // HttpClient para DeepSeek
             services.AddHttpClient<IDeepSeekService, DeepSeekService>(client =>
             {
+                var deepseekConfig = configuration.GetSection("DeepSeek").Get<DeepSeekConfig>();
+                client.BaseAddress = new Uri(deepseekConfig.BaseUrl);
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {deepseekConfig.ApiKey}");
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
             });
 

@@ -10,7 +10,38 @@ interface TarjetaProps {
 }
 
 const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
-  const { probabilidades, recomendacion, explicacion, factores_clave, alertas } = prediccion;
+  const { 
+    probabilidadLocal,
+    probabilidadEmpate,
+    probabilidadVisitante,
+    analisisDeepSeek,
+    confianza,
+    golesLocalPredichos,
+    golesVisitantePredichos,
+    promedioGolesLocal,
+    promedioGolesVisitante,
+    competicion,
+    estadio,
+    temporada
+  } = prediccion;
+
+  // Construir objeto de probabilidades para mantener compatibilidad
+  const probabilidades = {
+    local: probabilidadLocal,
+    empate: probabilidadEmpate,
+    visitante: probabilidadVisitante
+  };
+
+  // Determinar recomendación basada en la probabilidad más alta
+  const recomendacion = (() => {
+    if (probabilidadLocal >= probabilidadEmpate && probabilidadLocal >= probabilidadVisitante) {
+      return `Victoria de ${local}`;
+    } else if (probabilidadEmpate >= probabilidadLocal && probabilidadEmpate >= probabilidadVisitante) {
+      return 'Empate';
+    } else {
+      return `Victoria de ${visitante}`;
+    }
+  })();
 
   const obtenerColorRecomendacion = (recom: string): string => {
     const lower = recom.toLowerCase();
@@ -43,6 +74,11 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">
           {local} vs {visitante}
         </h3>
+        <div className="flex flex-wrap justify-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+          {competicion && <span>🏆 {competicion}</span>}
+          {temporada && <span>📅 {temporada}</span>}
+          {estadio && <span>🏟️ {estadio}</span>}
+        </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Análisis completo del partido</p>
       </div>
 
@@ -68,6 +104,11 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
           <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
             {formatearProbabilidad(probabilidades.local)}
           </p>
+          {golesLocalPredichos !== undefined && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              ⚽ {golesLocalPredichos} goles
+            </p>
+          )}
         </div>
         <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-gray-400">Empate</p>
@@ -80,48 +121,38 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
           <p className="text-xl font-bold text-red-600 dark:text-red-400">
             {formatearProbabilidad(probabilidades.visitante)}
           </p>
+          {golesVisitantePredichos !== undefined && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              ⚽ {golesVisitantePredichos} goles
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Explicación */}
+      {/* Confianza y promedio de goles */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <p className="text-sm text-gray-600 dark:text-gray-400">Confianza</p>
+          <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+            {formatearProbabilidad(confianza)}
+          </p>
+        </div>
+        <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          <p className="text-sm text-gray-600 dark:text-gray-400">Goles promedio</p>
+          <p className="text-xl font-bold text-green-600 dark:text-green-400">
+            {promedioGolesLocal?.toFixed(1)} / {promedioGolesVisitante?.toFixed(1)}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Local / Visitante</p>
+        </div>
+      </div>
+
+      {/* Análisis */}
       <div>
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          📝 Explicación
+          🤖 Análisis DeepSeek
         </h4>
-        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{explicacion}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{analisisDeepSeek}</p>
       </div>
-
-      {/* Factores clave */}
-      {factores_clave && factores_clave.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            🔑 Factores Clave
-          </h4>
-          <ul className="list-disc list-inside space-y-1">
-            {factores_clave.map((factor, index) => (
-              <li key={index} className="text-gray-600 dark:text-gray-300 text-sm">
-                {factor}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Alertas */}
-      {alertas && alertas.length > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-red-700 dark:text-red-300 mb-2">
-            ⚠️ Alertas
-          </h4>
-          <ul className="list-disc list-inside space-y-1">
-            {alertas.map((alerta, index) => (
-              <li key={index} className="text-red-600 dark:text-red-400 text-sm">
-                {alerta}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 };
