@@ -39,6 +39,8 @@ public class FootballApiService : IFootballApiService
                 };
             }
 
+            var rachaReciente = await GetRachaRecienteAsync(equipo, partidos);
+
             var comparer = StringComparison.OrdinalIgnoreCase;
 
             var golesFavor = partidos
@@ -55,6 +57,9 @@ public class FootballApiService : IFootballApiService
             var victorias = golesFavor.Where((g, i) => g > golesContra[i]).Count();
             var empates = golesFavor.Where((g, i) => g == golesContra[i]).Count();
             var derrotas = golesFavor.Where((g, i) => g < golesContra[i]).Count();
+            
+            var puntosPorPartido = ((victorias * 3.0) + empates) / partidos.Count;
+            var diferenciaGoles = golesFavor.Sum() - golesContra.Sum();
 
             return new EstadisticasEquipo
             {
@@ -66,7 +71,10 @@ public class FootballApiService : IFootballApiService
                 Victorias = victorias,
                 Empates = empates,
                 Derrotas = derrotas,
-                GolesPorPartido = golesFavor
+                GolesPorPartido = golesFavor,
+                Racha = rachaReciente,
+                PuntosPorPartido = puntosPorPartido,
+                DiferenciaGoles = diferenciaGoles
             };
         }
         catch (Exception ex)
@@ -89,7 +97,7 @@ public class FootballApiService : IFootballApiService
             }
 
             // Obtener partidos del equipo
-            var url = $"fixtures?team={teamId}&league={leagueId}&status=FT&last={limite}";
+            var url = $"fixtures?team={teamId}&status=FT&last={limite}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
@@ -192,5 +200,23 @@ public class FootballApiService : IFootballApiService
             _logger.LogError(ex, "Error al obtener ID del equipo {Equipo}", nombreEquipo);
             return 0;
         }
+    }
+
+    private async Task<string> GetRachaRecienteAsync(string equipo, List<PartidoHistorico> partidos)
+    {
+        var racha = partidos
+            .Take(5)
+            .Select(p => 
+            {
+                var esLocal = p.Local == equipo;
+                var gf = esLocal ? p.GolesLocal : p.GolesVisitante;
+                var gc = esLocal ? p.GolesVisitante : p.GolesLocal;
+
+                if (gf > gc) return "V";
+                if (gf == gc) return "E";
+                return "D";
+            });
+
+        return string.Join("-", racha);  // Ej: "V-V-E-D-V"
     }
 }

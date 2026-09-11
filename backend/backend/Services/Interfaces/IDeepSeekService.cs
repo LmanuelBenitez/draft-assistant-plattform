@@ -15,8 +15,8 @@ namespace backend.Services.Interfaces
         Task<string> ObtenerPrediccionFutbolAsync(
             string equipoLocal,
             string equipoVisitante,
-            double promedioGolesLocal,
-            double promedioGolesVisitante,
+            EstadisticasEquipo statsLocal,
+            EstadisticasEquipo statsVisitante,
             decimal probLocal,
             decimal probEmpate,
             decimal probVisitante,
