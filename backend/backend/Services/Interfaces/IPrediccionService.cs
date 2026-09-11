@@ -6,6 +6,7 @@ namespace backend.Services.Interfaces
     public interface IPrediccionService
     {
         Task<PrediccionResponseDto> GenerarPrediccionAsync(PartidoRequestDto request);
+        Task<IEnumerable<PrediccionResponseDto>> ObtenerPrediccionesAsync();
         Task<PrediccionResponseDto> ObtenerPrediccionAsync(int id);
         Task<bool> ValidarPrediccionAsync(PrediccionResponseDto prediccion);
         Task<decimal> CalcularConfianzaAsync(PrediccionResponseDto prediccion);

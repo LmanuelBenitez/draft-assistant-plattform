@@ -2,6 +2,7 @@ using backend.Data;
 using backend.DTOs.Request;
 using backend.DTOs.Response;
 using backend.Models;
+using backend.Repositories.Interfaces;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -14,12 +15,14 @@ namespace backend.Services.Implementations
         IPoissonService poissonService,
         IDeepSeekService deepSeekService,
         IFootballApiService footballApiService,
+        IPrediccionRepository prediccionRepository,
         ILogger<PrediccionService> logger) : IPrediccionService
     {
         private readonly AppDbContext _context = context;
         private readonly IPoissonService _poissonService = poissonService;
         private readonly IDeepSeekService _deepSeekService = deepSeekService;
         private readonly IFootballApiService _footballApi = footballApiService;
+        private readonly IPrediccionRepository _prediccionRepository = prediccionRepository;
         private readonly ILogger<PrediccionService> _logger = logger;
 
         /// <summary>
@@ -221,6 +224,12 @@ namespace backend.Services.Implementations
                 _logger.LogError(ex, $"Error al generar predicción para {request.Local} vs {request.Visitante}");
                 throw;
             }
+        }
+
+        public async Task<IEnumerable<PrediccionResponseDto>> ObtenerPrediccionesAsync()
+        {
+            var predicciones = await _prediccionRepository.GetPrediccionesAsync();
+            return predicciones.Select(MapToResponseDto);
         }
 
         public async Task<PrediccionResponseDto> ObtenerPrediccionAsync(int id)

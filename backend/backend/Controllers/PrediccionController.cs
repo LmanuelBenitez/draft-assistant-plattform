@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace backend.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/prediccion")]
     public class PrediccionController(
         IPrediccionService prediccionService,
         ILogger<PrediccionController> logger) : ControllerBase
@@ -42,6 +42,28 @@ namespace backend.Controllers
                 return StatusCode(500, "Error interno al generar la predicción");
             }
         }
+
+        /// <summary>
+        /// Obtener todas las predicciones generadas
+        /// </summary>
+        [HttpGet("")]
+        [ProducesResponseType(typeof(IEnumerable<PrediccionResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<IEnumerable<PrediccionResponseDto>>> ObtenerPredicciones()
+        {
+            try
+            {
+                var resultado = await _prediccionService.ObtenerPrediccionesAsync();
+                return Ok(resultado);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener predicciones");
+                return StatusCode(500, "Error interno al obtener las predicciones");
+            }
+        }
+
 
         /// <summary>
         /// Obtiene una predicción por su ID

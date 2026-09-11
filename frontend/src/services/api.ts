@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_CONFIG } from '../constants';
-import type { PartidoRequest, PrediccionResponse } from '../types';
+import type { PartidoRequest, PrediccionResponse, PrediccionHistorialItem } from '../types';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.baseURL,
@@ -21,7 +21,12 @@ apiClient.interceptors.response.use(
 export const predecirPartido = async (
   request: PartidoRequest
 ): Promise<PrediccionResponse> => {
-  const response = await apiClient.post<PrediccionResponse>('/Prediccion/generar', request);
+  const response = await apiClient.post<PrediccionResponse>('/prediccion/generar', request);
+  return response.data;
+};
+
+export const obtenerPredicciones = async (): Promise<PrediccionHistorialItem[]> => {
+  const response = await apiClient.get<PrediccionHistorialItem[]>('/prediccion');
   return response.data;
 };
 
