@@ -1,6 +1,7 @@
+using backend.Data;
+using backend.DTOs.Response;
 using backend.Models;
 using backend.Repositories.Interfaces;
-using backend.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Repositories.Implementations
@@ -12,6 +13,14 @@ namespace backend.Repositories.Implementations
         public PrediccionRepository(AppDbContext context)
         {
             _context = context;
+        }
+
+        public async Task<IEnumerable<Prediccion>> GetPrediccionesAsync()
+        {
+            var predicciones = await _context.Predicciones
+                .OrderByDescending(p => p.FechaPrediccion)
+                .ToListAsync();
+            return predicciones;
         }
 
         public async Task<Prediccion?> GetByIdAsync(int id)

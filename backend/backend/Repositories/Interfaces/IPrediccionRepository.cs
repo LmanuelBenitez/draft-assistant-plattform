@@ -4,6 +4,9 @@ namespace backend.Repositories.Interfaces
 {
     public interface IPrediccionRepository
     {
+
+        Task<IEnumerable<Prediccion>> GetPrediccionesAsync();
+
         // Obtener por ID
         Task<Prediccion?> GetByIdAsync(int id);
 

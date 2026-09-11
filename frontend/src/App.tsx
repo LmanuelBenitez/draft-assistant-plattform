@@ -4,6 +4,7 @@ import Formulario from './components/Formulario';
 import Grafico from './components/Grafico';
 import Tarjeta from './components/Tarjeta';
 import Layout from './components/Layout';
+import Historial from './components/Historial';
 import { usePrediccion } from './hooks/usePrediccion';
 import { TEXTOS } from './constants';
 import type { PartidoRequest } from './types';
@@ -43,7 +44,7 @@ function AppContent() {
       {error && (
         <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-red-600 dark:text-red-400 text-center">
-            ❌ {TEXTOS.error}: {error.message}
+            {TEXTOS.error}: {error.message}
           </p>
           <button
             onClick={handleReset}
@@ -72,6 +73,11 @@ function AppContent() {
           />
         </div>
       )}
+
+      {/* Historial de predicciones */}
+      <div className="mt-10">
+        <Historial />
+      </div>
     </Layout>
   );
 }

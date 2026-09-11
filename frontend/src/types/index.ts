@@ -40,6 +40,32 @@ export interface PrediccionResponse {
   golesRealesVisitante: number | null;
 }
 
+export interface PrediccionHistorialItem {
+  id: number;
+  local: string;
+  visitante: string;
+  ligaId: number | null;
+  temporada: string | null;
+  competicion: string | null;
+  estadio: string | null;
+  bajas: string | null;
+  contexto: string | null;
+  golesLocalPredichos: number;
+  golesVisitantePredichos: number;
+  probabilidadLocal: number;
+  probabilidadEmpate: number;
+  probabilidadVisitante: number;
+  confianza: number;
+  promedioGolesLocal: number;
+  promedioGolesVisitante: number;
+  analisisDeepSeek: string | null;
+  fechaPrediccion: string;
+  esAcertada: boolean;
+  puntosObtenidos: number | null;
+  golesRealesLocal: number | null;
+  golesRealesVisitante: number | null;
+}
+
 export interface PrediccionHistorial {
   id: string;
   fecha: Date;
