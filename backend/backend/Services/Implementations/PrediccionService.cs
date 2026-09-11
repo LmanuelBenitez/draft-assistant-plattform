@@ -1,10 +1,11 @@
+using backend.Data;
 using backend.DTOs.Request;
 using backend.DTOs.Response;
 using backend.Models;
-using backend.Data;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace backend.Services.Implementations
 {
@@ -26,8 +27,13 @@ namespace backend.Services.Implementations
         /// </summary>
         public async Task<PrediccionResponseDto> GenerarPrediccionAsync(PartidoRequestDto request)
         {
+
+            var stopwatch = Stopwatch.StartNew();
+            var tiempos = new Dictionary<string, long>();
+
             try
-            {
+            {     
+
                 // 1. Validar entrada
                 if (string.IsNullOrWhiteSpace(request.Local) || string.IsNullOrWhiteSpace(request.Visitante))
                     throw new ArgumentException("Local y Visitante son requeridos");
@@ -35,15 +41,30 @@ namespace backend.Services.Implementations
                 if (request.Local.Length < 2 || request.Visitante.Length < 2)
                     throw new ArgumentException("Los equipos deben tener al menos 2 caracteres");
 
+                var swFootball = Stopwatch.StartNew();
+
                 // 2. Obtener estadísticas desde API-Football
-                var statsLocal = await _footballApi.GetEstadisticasEquipoAsync(
+                var statsLocalTask = _footballApi.GetEstadisticasEquipoAsync(
                     request.Local, request.LigaId, request.Temporada);
-                var statsVisitante = await _footballApi.GetEstadisticasEquipoAsync(
+                var statsVisitanteTask = _footballApi.GetEstadisticasEquipoAsync(
                     request.Visitante, request.LigaId, request.Temporada);
+
+                await Task.WhenAll(statsLocalTask, statsVisitanteTask);
+
+                var statsLocal = await statsLocalTask;
+                var statsVisitante = await statsVisitanteTask;
+
                 var historicoH2H = await _footballApi.GetPartidosHead2HeadAsync(
                     statsLocal.EquipoId, statsVisitante.EquipoId, request.LigaId, request.Temporada);
 
+                swFootball.Stop();
+                tiempos["API-Football"] = swFootball.ElapsedMilliseconds;
+                _logger.LogInformation("--I> API-Football: {Ms} ms", swFootball.ElapsedMilliseconds);
+
+
                 // 3. Calcular promedios base
+                var swPromedios = Stopwatch.StartNew();
+
                 var promedioLocalBase = statsLocal.PromedioGolesFavor > 0 ? statsLocal.PromedioGolesFavor : 1.0;
                 var promedioVisitanteBase = statsVisitante.PromedioGolesFavor > 0 ? statsVisitante.PromedioGolesFavor : 1.0;
 
@@ -75,7 +96,13 @@ namespace backend.Services.Implementations
                         request.Visitante, promedioVisitante, promedioVisitanteBase);
                 }
 
+                swPromedios.Stop();
+                tiempos["Cálculo Promedios"] = swPromedios.ElapsedMilliseconds;
+                _logger.LogInformation("--I> Cálculo Promedios: {Ms} ms", swPromedios.ElapsedMilliseconds);
+
                 // 5. Calcular predicción con Poisson
+                var swPoisson = Stopwatch.StartNew();
+
                 var marcador = await _poissonService.PredecirMarcadorAsync(promedioLocal, promedioVisitante);
                 var probabilidades = await _poissonService.CalcularProbabilidadesPartidoAsync(promedioLocal, promedioVisitante);
                 var confianza = await _poissonService.CalcularConfianzaAsync(
@@ -99,7 +126,13 @@ namespace backend.Services.Implementations
                     }
                 }
 
+                swPoisson.Stop();
+                tiempos["Poisson"] = swPoisson.ElapsedMilliseconds;
+                _logger.LogInformation("--I> Poisson: {Ms} ms", swPoisson.ElapsedMilliseconds);
+
                 // 7. Guardar la predicción en BD (sin Partido)
+                var swLogs = Stopwatch.StartNew();
+
                 var prediccion = new Prediccion
                 {
                     Local = request.Local,
@@ -119,7 +152,8 @@ namespace backend.Services.Implementations
                     Confianza = (decimal)confianza,
                     PromedioGolesLocal = (decimal)promedioLocal,
                     PromedioGolesVisitante = (decimal)promedioVisitante,
-                    FechaPrediccion = DateTime.UtcNow
+                    FechaPrediccion = DateTime.UtcNow,
+                    EsAcertada = false,
                 };
 
                 _context.Predicciones.Add(prediccion);
@@ -130,29 +164,32 @@ namespace backend.Services.Implementations
                 {
                     Local = request.Local,
                     Visitante = request.Visitante,
-                    LigaId = int.TryParse(request.LigaId, out var liga) ? liga : (int?)null,
-                    Temporada = request.Temporada,
-                    Competicion = request.Competicion,
-                    Estadio = request.Estadio,
-                    Bajas = request.Bajas,
-                    Contexto = request.Contexto,
                     FechaHora = request.FechaHora,
+                    Estadio = request.Estadio,
+                    Competicion = request.Competicion,
                     GolesLocal = request.GolesLocal,
                     GolesVisitante = request.GolesVisitante,
+                    Finalizado = request.GolesLocal.HasValue && request.GolesVisitante.HasValue,
                     Estado = request.Estado
                 };
 
                 _context.Partidos.Add(partido);
                 await _context.SaveChangesAsync();
 
+                swLogs.Stop();
+                tiempos["Guardar en BD"] = swLogs.ElapsedMilliseconds;
+                _logger.LogInformation("--I> Guardar en BD: {Ms} ms", swLogs.ElapsedMilliseconds);
+
                 // 8. Obtener análisis de DeepSeek (con TODOS los datos)
                 try
                 {
+                    var swDeepseek = Stopwatch.StartNew();
+
                     var deepSeekResponse = await _deepSeekService.ObtenerPrediccionFutbolAsync(
                         equipoLocal: request.Local,
                         equipoVisitante: request.Visitante,
-                        promedioGolesLocal: promedioLocal,
-                        promedioGolesVisitante: promedioVisitante,
+                        statsLocal,
+                        statsVisitante,
                         probLocal: probabilidades.Local,
                         probEmpate: probabilidades.Empate,
                         probVisitante: probabilidades.Visitante,
@@ -165,6 +202,10 @@ namespace backend.Services.Implementations
 
                     prediccion.AnalisisDeepSeek = deepSeekResponse;
                     await _context.SaveChangesAsync();
+
+                    swDeepseek.Stop();
+                    tiempos["Obtener predicción de DeepSeek"] = swDeepseek.ElapsedMilliseconds;
+                    _logger.LogInformation("⏱️ Obtener predicción de DeepSeek: {Ms} ms", swDeepseek.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {

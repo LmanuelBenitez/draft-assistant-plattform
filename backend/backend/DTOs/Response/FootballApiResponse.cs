@@ -85,6 +85,9 @@ public class EstadisticasEquipo
     public int Empates { get; set; }
     public int Derrotas { get; set; }
     public List<int> GolesPorPartido { get; set; } = new();
+    public string Racha { get; set; } = string.Empty;
+    public double PuntosPorPartido { get; set; }
+    public int DiferenciaGoles { get; set; }
 }
 
 /// <summary>

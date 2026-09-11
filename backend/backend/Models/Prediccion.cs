@@ -4,8 +4,6 @@ public class Prediccion
 {
     public int Id { get; set; }
 
-    public int PartidoId { get; set; }
-
     // Equipos
     public string Local { get; set; } = string.Empty;
     public string Visitante { get; set; } = string.Empty;
