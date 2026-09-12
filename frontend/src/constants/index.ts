@@ -32,7 +32,7 @@ export const LIGAS_PRINCIPALES: Liga[] = [
   { id: "128", nombre: "Major League Soccer (MLS)", pais: "Estados Unidos" },
   { id: "135", nombre: "Serie A", pais: "Italia" },
   { id: "140", nombre: "La Liga", pais: "España" },
-  { id: "264", nombre: "Argentine Liga Profesional", pais: "Argentina" },
+  { id: "128", nombre: "Primera División de Argentina", pais: "Argentina" },
   { id: "262", nombre: "Liga MX", pais: "México" },
   { id: "98", nombre: "J1 League", pais: "Japón" },
 ];
