@@ -20,7 +20,8 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { prediccion, isLoading, error, realizarPrediccion, resetPrediccion } = usePrediccion();
+  const { prediccion, isLoading, cargandoAnalisis, error, realizarPrediccion, resetPrediccion } =
+    usePrediccion();
   const [equiposActuales, setEquiposActuales] = React.useState<PartidoRequest | null>(null);
 
   const handlePrediccion = async (data: PartidoRequest) => {
@@ -71,6 +72,14 @@ function AppContent() {
             local={equiposActuales.local}
             visitante={equiposActuales.visitante}
           />
+
+          {/* Indicador de análisis en generación (polling en segundo plano) */}
+          {cargandoAnalisis && (
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <span>Generando análisis detallado...</span>
+            </div>
+          )}
         </div>
       )}
 

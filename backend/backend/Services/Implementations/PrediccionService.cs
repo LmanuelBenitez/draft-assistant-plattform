@@ -16,6 +16,7 @@ namespace backend.Services.Implementations
         IDeepSeekService deepSeekService,
         IFootballApiService footballApiService,
         IPrediccionRepository prediccionRepository,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<PrediccionService> logger) : IPrediccionService
     {
         private readonly AppDbContext _context = context;
@@ -23,6 +24,7 @@ namespace backend.Services.Implementations
         private readonly IDeepSeekService _deepSeekService = deepSeekService;
         private readonly IFootballApiService _footballApi = footballApiService;
         private readonly IPrediccionRepository _prediccionRepository = prediccionRepository;
+        private readonly IServiceScopeFactory _serviceScopeFactory = serviceScopeFactory;
         private readonly ILogger<PrediccionService> _logger = logger;
 
         /// <summary>
@@ -157,10 +159,13 @@ namespace backend.Services.Implementations
                     PromedioGolesVisitante = (decimal)promedioVisitante,
                     FechaPrediccion = DateTime.UtcNow,
                     EsAcertada = false,
+                    AnalisisDeepSeek = null,
                 };
 
                 _context.Predicciones.Add(prediccion);
                 await _context.SaveChangesAsync();
+
+                var prediccionId = prediccion.Id;
 
                 // 7.5. Guardar el partido en BD (si no existe)
                 var partido = new Partido
@@ -184,37 +189,56 @@ namespace backend.Services.Implementations
                 _logger.LogInformation("--I> Guardar en BD: {Ms} ms", swLogs.ElapsedMilliseconds);
 
                 // 8. Obtener análisis de DeepSeek (con TODOS los datos)
-                try
+
+                _ = Task.Run(async () =>
                 {
-                    var swDeepseek = Stopwatch.StartNew();
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var deepSeekService = scope.ServiceProvider.GetRequiredService<IDeepSeekService>();
 
-                    var deepSeekResponse = await _deepSeekService.ObtenerPrediccionFutbolAsync(
-                        equipoLocal: request.Local,
-                        equipoVisitante: request.Visitante,
-                        statsLocal,
-                        statsVisitante,
-                        probLocal: probabilidades.Local,
-                        probEmpate: probabilidades.Empate,
-                        probVisitante: probabilidades.Visitante,
-                        competicion: request.Competicion,
-                        estadio: request.Estadio,
-                        bajas: request.Bajas,
-                        contexto: request.Contexto,
-                        historicoEnfrentamientos: historicoH2H
-                    );
+                    try
+                    {
+                        var swDeepseek = Stopwatch.StartNew();
+                        var deepSeekResponse = await deepSeekService.ObtenerPrediccionFutbolAsync(
+                            equipoLocal: request.Local,
+                            equipoVisitante: request.Visitante,
+                            statsLocal,
+                            statsVisitante,
+                            probLocal: probabilidades.Local,
+                            probEmpate: probabilidades.Empate,
+                            probVisitante: probabilidades.Visitante,
+                            competicion: request.Competicion,
+                            estadio: request.Estadio,
+                            bajas: request.Bajas,
+                            contexto: request.Contexto,
+                            historicoEnfrentamientos: historicoH2H
+                        );
 
-                    prediccion.AnalisisDeepSeek = deepSeekResponse;
-                    await _context.SaveChangesAsync();
+                        var prediccionDb = await dbContext.Predicciones.FindAsync(prediccionId);
+                        if (prediccionDb != null)
+                        {
+                            prediccionDb.AnalisisDeepSeek = deepSeekResponse;
+                            await dbContext.SaveChangesAsync();
+                        }
 
-                    swDeepseek.Stop();
-                    tiempos["Obtener predicción de DeepSeek"] = swDeepseek.ElapsedMilliseconds;
-                    _logger.LogInformation("⏱️ Obtener predicción de DeepSeek: {Ms} ms", swDeepseek.ElapsedMilliseconds);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error al obtener predicción de DeepSeek");
-                    prediccion.AnalisisDeepSeek = "No se pudo obtener el análisis de DeepSeek";
-                }
+                        swDeepseek.Stop();
+                        tiempos["Obtener predicción de DeepSeek"] = swDeepseek.ElapsedMilliseconds;
+                        _logger.LogInformation("⏱️ Obtener predicción de DeepSeek: {Ms} ms", swDeepseek.ElapsedMilliseconds);
+
+                        
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error al obtener predicción de DeepSeek");
+
+                        var prediccionDb = await dbContext.Predicciones.FindAsync(prediccionId);
+                        if (prediccionDb != null)
+                        {
+                            prediccionDb.AnalisisDeepSeek = "No se pudo obtener el análisis de DeepSeek";
+                            await dbContext.SaveChangesAsync();
+                        }
+                    }
+                });
 
                 // 9. Devolver respuesta
                 return MapToResponseDto(prediccion);

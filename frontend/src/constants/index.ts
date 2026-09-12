@@ -33,7 +33,7 @@ export const LIGAS_PRINCIPALES: Liga[] = [
   { id: "135", nombre: "Serie A", pais: "Italia" },
   { id: "140", nombre: "La Liga", pais: "España" },
   { id: "264", nombre: "Argentine Liga Profesional", pais: "Argentina" },
-  { id: "307", nombre: "Liga MX", pais: "México" },
+  { id: "262", nombre: "Liga MX", pais: "México" },
 ];
 
 export const getLigaById = (id: string): Liga | undefined => {

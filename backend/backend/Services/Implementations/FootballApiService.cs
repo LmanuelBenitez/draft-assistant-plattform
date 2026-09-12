@@ -97,7 +97,7 @@ public class FootballApiService : IFootballApiService
             }
 
             // Obtener partidos del equipo
-            var url = $"fixtures?team={teamId}&status=FT&last={limite}";
+            var url = $"fixtures?team={teamId}&status=FT-AET-PEN&last={limite}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
@@ -131,7 +131,7 @@ public class FootballApiService : IFootballApiService
         {
             
             // Ejemplo: fixtures/headtohead?h2h=541-529&limit=5
-            var url = $"fixtures/headtohead?h2h={localId}-{visitanteId}&status=FT&last={limite}";
+            var url = $"fixtures/headtohead?h2h={localId}-{visitanteId}&status=FT-AET-PEN&last={limite}";
 
             // Hacer la petición a la API
             var response = await _httpClient.GetAsync(url);
@@ -205,6 +205,7 @@ public class FootballApiService : IFootballApiService
     private async Task<string> GetRachaRecienteAsync(string equipo, List<PartidoHistorico> partidos)
     {
         var racha = partidos
+            .OrderByDescending(p => p.Fecha)
             .Take(5)
             .Select(p => 
             {

@@ -32,12 +32,18 @@ export interface PrediccionResponse {
   confianza: number;
   promedioGolesLocal: number;
   promedioGolesVisitante: number;
-  analisisDeepSeek: string;
+  analisisDeepSeek: string | null;
   fechaPrediccion: string;
   esAcertada: boolean;
   puntosObtenidos: number | null;
   golesRealesLocal: number | null;
   golesRealesVisitante: number | null;
+}
+
+export interface AnalisisResponse {
+  id: number;
+  analisisDeepseek: string | null;
+  listo: boolean;
 }
 
 export interface PrediccionHistorialItem {

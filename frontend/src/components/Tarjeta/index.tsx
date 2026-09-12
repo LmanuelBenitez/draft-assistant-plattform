@@ -1,20 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RECOMENDACION_COLORS } from '../../constants';
 import { formatearProbabilidad } from '../../utils/formatters';
+import { obtenerAnalisis } from '../../services/api';
 import type { PrediccionResponse } from '../../types';
 
 interface TarjetaProps {
   prediccion: PrediccionResponse;
   local: string;
   visitante: string;
+  onAnalisisActualizado?: (analisis: string) => void;
 }
 
-const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
-  const { 
+const Tarjeta: React.FC<TarjetaProps> = ({
+  prediccion,
+  local,
+  visitante,
+  onAnalisisActualizado,
+}) => {
+  const [analisis, setAnalisis] = useState<string | null>(prediccion.analisisDeepSeek);
+  const [isActualizando, setIsActualizando] = useState(false);
+  const [errorActualizar, setErrorActualizar] = useState<string | null>(null);
+
+  const {
+    id,
     probabilidadLocal,
     probabilidadEmpate,
     probabilidadVisitante,
-    analisisDeepSeek,
     confianza,
     golesLocalPredichos,
     golesVisitantePredichos,
@@ -22,17 +33,15 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
     promedioGolesVisitante,
     competicion,
     estadio,
-    temporada
+    temporada,
   } = prediccion;
 
-  // Construir objeto de probabilidades para mantener compatibilidad
   const probabilidades = {
     local: probabilidadLocal,
     empate: probabilidadEmpate,
-    visitante: probabilidadVisitante
+    visitante: probabilidadVisitante,
   };
 
-  // Determinar recomendación basada en la probabilidad más alta
   const recomendacion = (() => {
     if (probabilidadLocal >= probabilidadEmpate && probabilidadLocal >= probabilidadVisitante) {
       return `Victoria de ${local}`;
@@ -67,6 +76,31 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
     return '📊';
   };
 
+  /** Consulta el endpoint para ver si el análisis ya está listo. */
+  const handleActualizarAnalisis = async () => {
+    if (!id) return;
+
+    setIsActualizando(true);
+    setErrorActualizar(null);
+
+    try {
+      const response = await obtenerAnalisis(id);
+
+      if (response.listo && response.analisisDeepseek) {
+        setAnalisis(response.analisisDeepseek);
+        onAnalisisActualizado?.(response.analisisDeepseek);
+      } else {
+        setErrorActualizar('El análisis aún no está listo. Intenta de nuevo en unos segundos.');
+      }
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'Error al actualizar el análisis';
+      setErrorActualizar(mensaje);
+    } finally {
+      setIsActualizando(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg space-y-6">
       {/* Encabezado */}
@@ -79,7 +113,9 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
           {temporada && <span>📅 {temporada}</span>}
           {estadio && <span>🏟️ {estadio}</span>}
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Análisis completo del partido</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Análisis completo del partido
+        </p>
       </div>
 
       {/* Recomendación */}
@@ -146,12 +182,46 @@ const Tarjeta: React.FC<TarjetaProps> = ({ prediccion, local, visitante }) => {
         </div>
       </div>
 
-      {/* Análisis */}
+      {/* Análisis DeepSeek */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          🤖 Análisis DeepSeek
-        </h4>
-        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{analisisDeepSeek}</p>
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            🤖 Análisis DeepSeek
+          </h4>
+          <button
+            type="button"
+            onClick={() => void handleActualizarAnalisis()}
+            disabled={isActualizando}
+            className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            {isActualizando ? (
+              <>
+                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span>Consultando...</span>
+              </>
+            ) : (
+              <>
+                <span>Actualizar</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {analisis ? (
+          <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+            {analisis}
+          </p>
+        ) : (
+          <p className="text-gray-400 dark:text-gray-500 text-sm italic">
+            El análisis se está generando. Haz clic en "Actualizar" para verificar.
+          </p>
+        )}
+
+        {errorActualizar && (
+          <p className="mt-2 text-xs text-yellow-600 dark:text-yellow-400">
+            ⚠️ {errorActualizar}
+          </p>
+        )}
       </div>
     </div>
   );

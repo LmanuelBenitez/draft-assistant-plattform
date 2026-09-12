@@ -90,6 +90,35 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Obtiene un analisis de Deepseek de una predicción por su ID
+        /// </summary>
+        [HttpGet("{id}/analisis")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<string>> ObtenerAnalisisPrediccion(int id)
+        {
+            try
+            {
+                var resultado = await _prediccionService.ObtenerPrediccionAsync(id);
+                return Ok(new
+                {
+                    id = resultado.Id,
+                    analisisDeepseek = resultado.AnalisisDeepSeek,
+                    listo = !string.IsNullOrEmpty(resultado.AnalisisDeepSeek)
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error al obtener analisis de Deepseek en la predicción {id}");
+                return StatusCode(500, "Error interno al obtener el análisis de Deepseek");
+            }
+        }
+
+        /// <summary>
         /// Actualiza los resultados de un partido y recalcula los puntajes
         /// </summary>
         [HttpPut("resultados/{partidoId}")]
