@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { TEXTOS, LIGAS_PRINCIPALES } from '../../constants';
-import { capitalizar } from '../../utils/formatters';
+import { toTitleCase } from '../../utils/formatters';
 import type { PartidoRequest } from '../../types';
 
 interface FormularioProps {
@@ -49,8 +49,8 @@ const Formulario: React.FC<FormularioProps> = ({ onSubmit, isLoading }) => {
 
   const onSubmitHandler = (data: FormData) => {
     onSubmit({
-      local: capitalizar(data.local.trim()),
-      visitante: capitalizar(data.visitante.trim()),
+      local: toTitleCase(data.local.trim()),
+      visitante: toTitleCase(data.visitante.trim()),
       ligaId: data.ligaId.trim(),
       temporada: data.temporada.trim(),
       competicion: data.competicion.trim() || undefined,

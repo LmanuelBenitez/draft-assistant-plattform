@@ -136,21 +136,31 @@ public class DeepSeekService : IDeepSeekService
             prompt.AppendLine("3. Usa el historial H2H para detectar patrones de enfrentamiento.");
             prompt.AppendLine("4. Si un equipo tiene mejor diferencia de goles, mencionalo.");
             prompt.AppendLine("5. No uses frases genericas como 'sera un partido parejo' sin justificacion.");
-            prompt.AppendLine("6. Puedes mencionar factores blandos (moral, presion) SOLO si los datos los respaldan.");
+            prompt.AppendLine("6. ADEMAS de los datos estadisticos, analiza factores intangibles como:");
+            prompt.AppendLine("   - La racha actual de cada equipo (positiva/negativa)");
+            prompt.AppendLine("   - La moral del equipo basada en resultados recientes");
+            prompt.AppendLine("   - El factor psicologico del historial H2H (dominancia)");
+            prompt.AppendLine("   - La presion del partido (localia, clasico, final)");
+            prompt.AppendLine("   - La importancia del partido para cada equipo");
+            prompt.AppendLine("   Estos factores son VALIDOS aunque no tengas datos exactos, ya que se derivan");
+            prompt.AppendLine("   del contexto y los resultados recientes que SI tienes.");
             prompt.AppendLine("7. NO inventes datos. Si no tienes informacion, NO la menciones.");
+            prompt.AppendLine("7.5 REGLA CRITICA: Cuando menciones una racha, DEBES copiarla TEXTUALMENTE del dato proporcionado.");
+            prompt.AppendLine($"RACHA OFICIAL DE {equipoLocal}: '{statsLocal.Racha}'");
+            prompt.AppendLine($"RACHA OFICIAL DE {equipoVisitante}: '{statsVisitante.Racha}'");
             prompt.AppendLine("8. Responde EXCLUSIVAMENTE en el siguiente formato JSON:");
             prompt.AppendLine(@"
-        {
-            ""explicacion"": ""texto de maximo 5 lineas"",
-            ""factores_clave"": [""factor1"", ""factor2"", ""factor3""],
-            ""alertas"": [""alerta1"", ""alerta2""],
-            ""recomendacion"": ""Victoria de X|Empate|Victoria de Y""
-        }");
+            {
+                ""explicacion"": ""texto de maximo 5 lineas"",
+                ""factores_clave"": [""factor1"", ""factor2"", ""factor3""],
+                ""alertas"": [""alerta1"", ""alerta2""],
+                ""recomendacion"": ""Victoria de X|Empate|Victoria de Y""
+            }");
 
-        return await ConsultarAsync(prompt.ToString(), 800);
+        return await ConsultarAsync(prompt.ToString(), 500);
     }
 
-    public async Task<string> ConsultarAsync(string prompt, int maxTokens = 700)
+    public async Task<string> ConsultarAsync(string prompt, int maxTokens = 500)
     {
         try
         {
@@ -161,6 +171,7 @@ public class DeepSeekService : IDeepSeekService
                 {
                     new { role = "user", content = prompt }
                 },
+                thinking = new { type = "disabled" },
                 max_tokens = maxTokens,
                 temperature = _config.Temperature,
                 top_p = _config.TopP

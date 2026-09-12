@@ -11,6 +11,14 @@ export const capitalizar = (texto: string): string => {
   return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
 };
 
+export const toTitleCase = (str: string): string => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export const formatearProbabilidad = (valor: number): string => {
   return `${Math.round(valor * 100)}%`;
 };
