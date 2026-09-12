@@ -1,3 +1,5 @@
+using backend.Utils.Constants;
+using backend.Utils.Helpers;
 using backend.Services.Interfaces;
 
 namespace backend.Services.Implementations
@@ -6,13 +8,20 @@ namespace backend.Services.Implementations
     {
         private static readonly double[] FactorialCache = new double[20];
 
-        static PoissonService()
+        // Parámetro rho de Dixon-Coles
+        private readonly double _rho;
+
+        public PoissonService()
         {
+            // Inicializar caché de factoriales
             FactorialCache[0] = 1;
             for (int i = 1; i < FactorialCache.Length; i++)
             {
                 FactorialCache[i] = FactorialCache[i - 1] * i;
             }
+
+            // ✅ Valor por defecto de rho
+            _rho = DixonColesConstants.RhoPorDefecto;
         }
 
         public double CalcularProbabilidadPoisson(double lambda, int goles)
@@ -29,7 +38,6 @@ namespace backend.Services.Implementations
             if (lambda == 0)
                 return 0.0;
 
-            // P(X = k) = (e^(-lambda) * lambda^k) / k!
             double exponencial = Math.Exp(-lambda);
             double potencia = Math.Pow(lambda, goles);
             double factorial = ObtenerFactorial(goles);
@@ -50,6 +58,10 @@ namespace backend.Services.Implementations
             return result;
         }
 
+        /// <summary>
+        /// Calcula las probabilidades usando el modelo Dixon-Coles.
+        /// Corrige la subestimación de empates de Poisson estándar.
+        /// </summary>
         public async Task<(decimal Local, decimal Empate, decimal Visitante)> CalcularProbabilidadesPartidoAsync(
             double promedioLocal,
             double promedioVisitante,
@@ -58,30 +70,54 @@ namespace backend.Services.Implementations
             if (promedioLocal < 0 || promedioVisitante < 0)
                 throw new ArgumentException("Los promedios de goles deben ser mayores o iguales a 0");
 
-            decimal probLocal = 0;
-            decimal probEmpate = 0;
-            decimal probVisitante = 0;
+            double probLocal = 0;
+            double probEmpate = 0;
+            double probVisitante = 0;
+            double probTotal = 0;
 
-            // Calcular probabilidad de cada marcador posible
+            // Calcular probabilidad de cada marcador posible con Dixon-Coles
             for (int golesLocal = 0; golesLocal <= maxGoles; golesLocal++)
             {
                 for (int golesVisitante = 0; golesVisitante <= maxGoles; golesVisitante++)
                 {
-                    double prob = CalcularProbabilidadPoisson(promedioLocal, golesLocal) *
-                                  CalcularProbabilidadPoisson(promedioVisitante, golesVisitante);
+                    // ✅ Usar Dixon-Coles en lugar de Poisson estándar
+                    double prob = DixonColesHelper.CalcularProbabilidadMarcador(
+                        golesLocal,
+                        golesVisitante,
+                        promedioLocal,
+                        promedioVisitante,
+                        _rho,
+                        CalcularProbabilidadPoisson);
+
+                    probTotal += prob;
 
                     if (golesLocal > golesVisitante)
-                        probLocal += (decimal)prob;
+                        probLocal += prob;
                     else if (golesLocal == golesVisitante)
-                        probEmpate += (decimal)prob;
+                        probEmpate += prob;
                     else
-                        probVisitante += (decimal)prob;
+                        probVisitante += prob;
                 }
             }
 
-            return await Task.FromResult((probLocal, probEmpate, probVisitante));
+            // ✅ Normalizar (Dixon-Coles puede no sumar 1.0 exactamente)
+            if (probTotal > 0)
+            {
+                probLocal /= probTotal;
+                probEmpate /= probTotal;
+                probVisitante /= probTotal;
+            }
+
+            return await Task.FromResult((
+                (decimal)probLocal,
+                (decimal)probEmpate,
+                (decimal)probVisitante
+            ));
         }
 
+        /// <summary>
+        /// Predice el marcador más probable usando Dixon-Coles.
+        /// </summary>
         public async Task<(int GolesLocal, int GolesVisitante)> PredecirMarcadorAsync(
             double promedioLocal,
             double promedioVisitante)
@@ -89,58 +125,75 @@ namespace backend.Services.Implementations
             if (promedioLocal < 0 || promedioVisitante < 0)
                 throw new ArgumentException("Los promedios de goles deben ser mayores o iguales a 0");
 
-            int golesLocal = EncontrarModa(promedioLocal, 10);
-            int golesVisitante = EncontrarModa(promedioVisitante, 10);
-
-            return await Task.FromResult((golesLocal, golesVisitante));
-        }
-
-        private int EncontrarModa(double lambda, int maxGoles)
-        {
             double maxProb = 0;
-            int moda = 0;
+            int mejorGolesLocal = 0;
+            int mejorGolesVisitante = 0;
 
-            for (int goles = 0; goles <= maxGoles; goles++)
+            // ✅ Buscar el marcador con mayor probabilidad según Dixon-Coles
+            for (int golesLocal = 0; golesLocal <= DixonColesConstants.MaxGoles; golesLocal++)
             {
-                double prob = CalcularProbabilidadPoisson(lambda, goles);
-                if (prob > maxProb)
+                for (int golesVisitante = 0; golesVisitante <= DixonColesConstants.MaxGoles; golesVisitante++)
                 {
-                    maxProb = prob;
-                    moda = goles;
+                    double prob = DixonColesHelper.CalcularProbabilidadMarcador(
+                        golesLocal,
+                        golesVisitante,
+                        promedioLocal,
+                        promedioVisitante,
+                        _rho,
+                        CalcularProbabilidadPoisson);
+
+                    if (prob > maxProb)
+                    {
+                        maxProb = prob;
+                        mejorGolesLocal = golesLocal;
+                        mejorGolesVisitante = golesVisitante;
+                    }
                 }
             }
 
-            return moda;
+            return await Task.FromResult((mejorGolesLocal, mejorGolesVisitante));
         }
 
+        /// <summary>
+        /// Calcula la confianza basada en Dixon-Coles.
+        /// </summary>
         public async Task<double> CalcularConfianzaAsync(
             double promedioLocal,
             double promedioVisitante,
             int golesLocalPredichos,
             int golesVisitantePredichos)
         {
-            // Calcular la probabilidad del marcador específico
-            double probMarcador = CalcularProbabilidadPoisson(promedioLocal, golesLocalPredichos) *
-                                  CalcularProbabilidadPoisson(promedioVisitante, golesVisitantePredichos);
+            // ✅ Usar Dixon-Coles para calcular la probabilidad del marcador
+            double probMarcador = DixonColesHelper.CalcularProbabilidadMarcador(
+                golesLocalPredichos,
+                golesVisitantePredichos,
+                promedioLocal,
+                promedioVisitante,
+                _rho,
+                CalcularProbabilidadPoisson);
 
-            // Calcular la probabilidad total de todos los marcadores
+            // Calcular la probabilidad total
             double probTotal = 0;
-            for (int i = 0; i <= 10; i++)
+            for (int i = 0; i <= DixonColesConstants.MaxGoles; i++)
             {
-                for (int j = 0; j <= 10; j++)
+                for (int j = 0; j <= DixonColesConstants.MaxGoles; j++)
                 {
-                    probTotal += CalcularProbabilidadPoisson(promedioLocal, i) *
-                                 CalcularProbabilidadPoisson(promedioVisitante, j);
+                    probTotal += DixonColesHelper.CalcularProbabilidadMarcador(
+                        i, j, promedioLocal, promedioVisitante, _rho, CalcularProbabilidadPoisson);
                 }
             }
 
-            // Normalizar la confianza (0-1)
+            // Normalizar
             double confianza = probTotal > 0 ? probMarcador / probTotal : 0;
 
-            // Escalar para tener una medida más significativa
+            // Escalar
             confianza = Math.Min(confianza * 10, 1.0);
 
-            return await Task.FromResult(confianza);
+            // ✅ Limitar confianza máxima a 85%
+            confianza = Math.Min(confianza, 0.85);
+            confianza = Math.Max(confianza, 0.30);
+
+            return await Task.FromResult(Math.Round(confianza, 2));
         }
     }
 }

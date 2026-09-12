@@ -136,19 +136,20 @@ public class DeepSeekService : IDeepSeekService
             prompt.AppendLine("3. Usa el historial H2H para detectar patrones de enfrentamiento.");
             prompt.AppendLine("4. Si un equipo tiene mejor diferencia de goles, mencionalo.");
             prompt.AppendLine("5. No uses frases genericas como 'sera un partido parejo' sin justificacion.");
-            prompt.AppendLine("6. ADEMAS de los datos estadisticos, analiza factores intangibles como:");
-            prompt.AppendLine("   - La racha actual de cada equipo (positiva/negativa)");
-            prompt.AppendLine("   - La moral del equipo basada en resultados recientes");
-            prompt.AppendLine("   - El factor psicologico del historial H2H (dominancia)");
-            prompt.AppendLine("   - La presion del partido (localia, clasico, final)");
-            prompt.AppendLine("   - La importancia del partido para cada equipo");
-            prompt.AppendLine("   Estos factores son VALIDOS aunque no tengas datos exactos, ya que se derivan");
-            prompt.AppendLine("   del contexto y los resultados recientes que SI tienes.");
-            prompt.AppendLine("7. NO inventes datos. Si no tienes informacion, NO la menciones.");
-            prompt.AppendLine("7.5 REGLA CRITICA: Cuando menciones una racha, DEBES copiarla TEXTUALMENTE del dato proporcionado.");
-            prompt.AppendLine($"RACHA OFICIAL DE {equipoLocal}: '{statsLocal.Racha}'");
-            prompt.AppendLine($"RACHA OFICIAL DE {equipoVisitante}: '{statsVisitante.Racha}'");
-            prompt.AppendLine("8. Responde EXCLUSIVAMENTE en el siguiente formato JSON:");
+            prompt.AppendLine();
+            prompt.AppendLine("FACTORES INTANGIBLES (opcionales):");
+            prompt.AppendLine("6. Puedes mencionar factores intangibles SOLO si se derivan directamente de los datos proporcionados:");
+            prompt.AppendLine("   - Racha actual: basate en los ultimos 5 resultados que tienes");
+            prompt.AppendLine("   - Moral: basate en la diferencia de goles y resultados recientes");
+            prompt.AppendLine("   - Factor psicologico H2H: basate en el historial directo");
+            prompt.AppendLine("   - Presion del partido: basate en el contexto proporcionado (localia, competicion)");
+            prompt.AppendLine("   - Importancia: basate en el contexto proporcionado");
+            prompt.AppendLine();
+            prompt.AppendLine("7. IMPORTANTE: Si no tienes datos suficientes para justificar un factor intangible,");
+            prompt.AppendLine("   NO lo menciones. Es mejor un analisis corto y solido que uno largo e inventado.");
+            prompt.AppendLine();
+            prompt.AppendLine("8. Si en tu analisis mencionas que el empate es probable, tu recomendacion DEBE ser Empate.");
+            prompt.AppendLine("9. Responde EXCLUSIVAMENTE en el siguiente formato JSON:");
             prompt.AppendLine(@"
             {
                 ""explicacion"": ""texto de maximo 5 lineas"",
