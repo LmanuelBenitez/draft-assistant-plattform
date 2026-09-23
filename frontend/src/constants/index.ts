@@ -23,6 +23,8 @@ export const LIGAS_PRINCIPALES: Liga[] = [
   { id: "2", nombre: "UEFA Champions League", pais: "Europa" },
   { id: "3", nombre: "UEFA Europa League", pais: "Europa" },
   { id: "5", nombre: "UEFA European Championship", pais: "Europa" },
+  { id: "11", nombre: "CONMEBOL Sudamericana", pais: "Sudamerica" },
+  { id: "13", nombre: "CONMEBOL Libertadores", pais: "Sudamerica" },
   { id: "39", nombre: "Premier League", pais: "Inglaterra" },
   { id: "61", nombre: "Ligue 1", pais: "Francia" },
   { id: "71", nombre: "Brasileirão Série A", pais: "Brasil" },
@@ -31,6 +33,7 @@ export const LIGAS_PRINCIPALES: Liga[] = [
   { id: "94", nombre: "Primeira Liga", pais: "Portugal" },
   { id: "128", nombre: "Major League Soccer (MLS)", pais: "Estados Unidos" },
   { id: "135", nombre: "Serie A", pais: "Italia" },
+  { id: "137", nombre: "Copa Italia", pais: "Italia" },
   { id: "140", nombre: "La Liga", pais: "España" },
   { id: "264", nombre: "Argentine Liga Profesional", pais: "Argentina" },
   { id: "262", nombre: "Liga MX", pais: "México" },
@@ -64,7 +67,7 @@ export const TEXTOS = {
 };
 
 export const API_CONFIG = {
-  baseURL: 'https://localhost:7277/api',
+  baseURL: '/api',
   timeout: 60000,
 };
 
@@ -77,3 +80,5 @@ export const RECOMENDACION_COLORS = {
   empate: 'text-yellow-600 dark:text-yellow-400',
   visitante: 'text-red-600 dark:text-red-400',
 };
+
+// baseURL: 'https://localhost:7277/api'
