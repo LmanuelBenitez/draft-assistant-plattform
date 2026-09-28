@@ -37,35 +37,20 @@ STACK
 . API-Football v3 (datos de partidos)
 . DeepSeek (análisis con IA)
 
---------------------------------
-Usuario (navegador)
-      │
-      ▼
-Frontend (React + Nginx) :8081
-      │
-      ▼
-Backend (ASP.NET Core) :8080
-      │
-   ┌──┼──────────┐
-   ▼  ▼          ▼
-Football  DeepSeek  SQLite
-  API       API      (BD)
----------------------------------
-
 # Backend
-Repository - IPrediccionRepository
-DI - Todo se inyecta en Program.cs
-DTO	- Separado de las entidades
-Service Layer	- PrediccionService orquesta todo
-Strategy	- IPoissonService
-Options	- IOptions<DeepSeekConfig>
-Extension Methods	- ServiceExtensions
-Primary Constructors	- C# 12+
+Repository - IPrediccionRepository, 
+DI - Todo se inyecta en Program.cs, 
+DTO - Separado de las entidades, 
+Service Layer - PrediccionService orquesta todo, 
+Strategy - IPoissonService, 
+Options - IOptions<DeepSeekConfig>, 
+Extension Methods	- ServiceExtensions, 
+Primary Constructors - C# 12+
 
 # Frontend
-Container/Presentational	- AppContent orquesta
-Custom Hooks	- usePrediccion
-Controlled Components	- React Hook Form
+Container/Presentational - AppContent orquesta
+Custom Hooks - usePrediccion
+Controlled Components - React Hook Form
 State	- Zustand + TanStack Query
-Service Layer	- api.ts
-Barrel Exports	- index.ts por carpeta
+Service Layer - api.ts
+Barrel Exports - index.ts por carpeta
