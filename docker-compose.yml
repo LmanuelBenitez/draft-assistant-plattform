@@ -9,6 +9,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DeepSeek__ApiKey=${DEEPSEEK_API_KEY}
+      - FootballApi__ApiKey=${FOOTBALL_API_KEY}
     volumes:
       - backend-data:/app/data
     networks:
