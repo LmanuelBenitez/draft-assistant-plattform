@@ -5,7 +5,7 @@ metadata:
     kompose.cmd: kompose convert
     kompose.version: 1.38.0 (a8f5d1cbd)
   labels:
-    io.kompose.service: backend
+    app: backend
   name: backend
 spec:
   ports:
@@ -13,4 +13,4 @@ spec:
       port: 8080
       targetPort: 8080
   selector:
-    io.kompose.service: backend
+    app: backend

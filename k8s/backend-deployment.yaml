@@ -21,8 +21,8 @@ spec:
     spec:
       containers:
         - name: backend
-          image: draft-assistant-plattform-backend:latest
-          imagePullPolicy: Never
+          image: luismaba/draft-backend:v2
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               protocol: TCP
@@ -43,7 +43,6 @@ spec:
                   key: FOOTBALL_API_KEY
             - name: ConnectionStrings__DefaultConnection
               value: "Data Source=/app/data/draftassistant.db"
-          # ✅ Health check con wget (disponible en Alpine) o TCP
           livenessProbe:
             httpGet:
               path: /health

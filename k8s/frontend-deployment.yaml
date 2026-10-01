@@ -26,8 +26,8 @@ spec:
         app: frontend
     spec:
       containers:
-        - image: draft-assistant-plattform-frontend:latest
-          imagePullPolicy: Never
+        - image: luismaba/draft-frontend:v2
+          imagePullPolicy: IfNotPresent
           name: frontend
           ports:
             - containerPort: 80
