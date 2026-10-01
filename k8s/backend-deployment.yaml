@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.38.0 (a8f5d1cbd)
+  labels:
+    app: backend
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: luismaba/draft-backend:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: DeepSeek__ApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: DEEPSEEK_API_KEY
+            - name: FootballApi__ApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: FOOTBALL_API_KEY
+            - name: ConnectionStrings__DefaultConnection
+              value: "Data Source=/app/data/draftassistant.db"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - mountPath: /app/data
+              name: backend-data
+      restartPolicy: Always
+      volumes:
+        - name: backend-data
+          persistentVolumeClaim:
+            claimName: backend-data
